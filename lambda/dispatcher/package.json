@@ -1,0 +1,23 @@
+{
+  "name": "claw-boutique-dispatcher",
+  "version": "1.0.0",
+  "description": "Lambda dispatcher: routes SNS-wrapped WhatsApp and SES inbound email events to the OpenClaw gateway",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "build:watch": "tsc --project tsconfig.json --watch",
+    "lint": "eslint 'src/**/*.ts' --max-warnings 0",
+    "test": "jest --passWithNoTests"
+  },
+  "dependencies": {
+    "axios": "^1.7.2"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.140",
+    "@types/node": "^20.14.2",
+    "typescript": "^5.4.5"
+  }
+}

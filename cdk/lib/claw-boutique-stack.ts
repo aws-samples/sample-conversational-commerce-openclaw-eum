@@ -1,0 +1,484 @@
+/**
+ * ClawBoutiqueStack
+ *
+ * Infrastructure for the Claw Boutique messaging and backend system.
+ *
+ * Architecture overview
+ * ---------------------
+ *  1. SNS Topic "ClawBoutiqueInbound"
+ *       ↑  End User Messaging Social (WhatsApp) publishes inbound messages here
+ *          via the topic's resource policy (social-messaging.amazonaws.com).
+ *       Subscriber → Lambda Dispatcher
+ *
+ *  2. Lambda Dispatcher
+ *       - Receives SNS events (WhatsApp inbound messages, SES inbound notifications)
+ *       - Can reply via social-messaging:SendWhatsAppMessage
+ *       - Can send email via ses:SendEmail / ses:SendRawEmail
+ *       - Code asset lives in ../lambda/dispatcher (built separately)
+ *
+ *  3. SES domain identity + receipt rule set
+ *       - Domain: clawboutique.example.com
+ *       - Inbound receipt rule for support@clawboutique.com → SNS action
+ *         (publishes raw email to ClawBoutiqueInbound, picked up by dispatcher)
+ *
+ *  4. Lightsail IAM role
+ *       - Assumed by the OpenClaw app running on Lightsail
+ *       - Grants read access to the DB credentials secret only
+ *
+ *  5. Secrets Manager secret "ClawBoutique/DbCredentials"
+ *       - Stores RDS/MySQL DB host, port, name, username, password
+ *       - Placeholder values — replace via AWS Console or CLI before first deploy
+ */
+
+import {
+  Stack,
+  StackProps,
+  CfnOutput,
+  Duration,
+  RemovalPolicy,
+  SecretValue,
+} from "aws-cdk-lib";
+import { Construct } from "constructs";
+import * as sns from "aws-cdk-lib/aws-sns";
+import * as subscriptions from "aws-cdk-lib/aws-sns-subscriptions";
+import * as iam from "aws-cdk-lib/aws-iam";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as ses from "aws-cdk-lib/aws-ses";
+import * as sesActions from "aws-cdk-lib/aws-ses-actions";
+import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
+import * as logs from "aws-cdk-lib/aws-logs";
+import * as kms from "aws-cdk-lib/aws-kms";
+
+// ---------------------------------------------------------------------------
+// Constants — update these before deploying to production
+// ---------------------------------------------------------------------------
+const DOMAIN = "clawboutique.example.com";
+const SUPPORT_EMAIL = "support@clawboutique.com";
+// The Lightsail instance principal that may assume the OpenClaw role.
+// Replace with the actual Lightsail instance ARN or AWS account ID once known.
+const LIGHTSAIL_ACCOUNT_PRINCIPAL = ""; // e.g. "arn:aws:iam::123456789012:root"
+
+export class ClawBoutiqueStack extends Stack {
+  constructor(scope: Construct, id: string, props?: StackProps) {
+    super(scope, id, props);
+
+    // =========================================================================
+    // 1. KMS key — used to encrypt the SNS topic so that the End User Messaging
+    //    Social service principal can encrypt/decrypt messages at rest.
+    // =========================================================================
+    const topicKey = new kms.Key(this, "ClawBoutiqueTopicKey", {
+      description:
+        "CMK for ClawBoutiqueInbound SNS topic. " +
+        "Grants social-messaging and ses service principals decrypt access.",
+      enableKeyRotation: true,
+      removalPolicy: RemovalPolicy.RETAIN,
+    });
+
+    // Allow the service principals that publish to the topic to use this key.
+    topicKey.addToResourcePolicy(
+      new iam.PolicyStatement({
+        sid: "AllowEUMAndSESKmsAccess",
+        effect: iam.Effect.ALLOW,
+        principals: [
+          new iam.ServicePrincipal("social-messaging.amazonaws.com"),
+          new iam.ServicePrincipal("ses.amazonaws.com"),
+        ],
+        actions: ["kms:Decrypt", "kms:GenerateDataKey"],
+        resources: ["*"],
+      })
+    );
+
+    // =========================================================================
+    // 2. SNS Topic — "ClawBoutiqueInbound"
+    //
+    //    End User Messaging Social Integration point:
+    //    In the AWS End User Messaging Social console, when you register your
+    //    WhatsApp Business Account phone number you configure an "event
+    //    destination". Set that destination to this topic ARN (exported below
+    //    as ClawBoutiqueInboundTopicArn). The resource policy below grants the
+    //    social-messaging.amazonaws.com service principal permission to publish.
+    // =========================================================================
+    const inboundTopic = new sns.Topic(this, "ClawBoutiqueInbound", {
+      topicName: "ClawBoutiqueInbound",
+      displayName: "Claw Boutique — Inbound Messages (WhatsApp + Email)",
+      masterKey: topicKey,
+    });
+
+    // Grant End User Messaging Social (WhatsApp) publish rights.
+    // This policy statement is what the EUM Social service checks before
+    // delivering a webhook event from your registered phone number to SNS.
+    inboundTopic.addToResourcePolicy(
+      new iam.PolicyStatement({
+        sid: "AllowEUMSocialPublish",
+        effect: iam.Effect.ALLOW,
+        principals: [
+          new iam.ServicePrincipal("social-messaging.amazonaws.com"),
+        ],
+        actions: ["sns:Publish"],
+        resources: [inboundTopic.topicArn],
+        // Scope the permission to events originating from this AWS account only,
+        // preventing cross-account abuse.
+        conditions: {
+          StringEquals: {
+            "AWS:SourceAccount": this.account,
+          },
+        },
+      })
+    );
+
+    // Grant SES permission to publish inbound email receipt notifications.
+    inboundTopic.addToResourcePolicy(
+      new iam.PolicyStatement({
+        sid: "AllowSESReceiptPublish",
+        effect: iam.Effect.ALLOW,
+        principals: [new iam.ServicePrincipal("ses.amazonaws.com")],
+        actions: ["sns:Publish"],
+        resources: [inboundTopic.topicArn],
+        conditions: {
+          StringEquals: {
+            "AWS:SourceAccount": this.account,
+          },
+        },
+      })
+    );
+
+    // =========================================================================
+    // 3. Lambda Dispatcher — IAM execution role
+    //
+    //    Permissions granted:
+    //      • SNS read (DescribeTopic, GetTopicAttributes) — subscribe/inspect
+    //      • social-messaging:SendWhatsAppMessage — reply via EUM Social
+    //      • ses:SendEmail + ses:SendRawEmail — send outbound support emails
+    //      • logs:CreateLogGroup/Stream/PutLogEvents — CloudWatch logging
+    // =========================================================================
+    const dispatcherRole = new iam.Role(this, "DispatcherLambdaRole", {
+      roleName: "ClawBoutiqueDispatcherLambdaRole",
+      assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+      description:
+        "Execution role for the Claw Boutique Lambda Dispatcher. " +
+        "Allows replying via WhatsApp (EUM Social), sending SES email, " +
+        "and reading SNS topic metadata.",
+      managedPolicies: [
+        // AWSLambdaBasicExecutionRole provides CloudWatch Logs permissions.
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "service-role/AWSLambdaBasicExecutionRole"
+        ),
+      ],
+    });
+
+    // SNS read — allows the dispatcher to inspect topic attributes if needed.
+    dispatcherRole.addToPolicy(
+      new iam.PolicyStatement({
+        sid: "SNSReadAccess",
+        effect: iam.Effect.ALLOW,
+        actions: [
+          "sns:GetTopicAttributes",
+          "sns:ListSubscriptionsByTopic",
+          "sns:ListTopics",
+        ],
+        resources: [inboundTopic.topicArn],
+      })
+    );
+
+    // End User Messaging Social — send outbound WhatsApp messages.
+    // EUM Social requires resource: "*" because the phone number resource ARN
+    // is not known until a number is registered in the EUM Social console.
+    dispatcherRole.addToPolicy(
+      new iam.PolicyStatement({
+        sid: "EUMSocialSendWhatsApp",
+        effect: iam.Effect.ALLOW,
+        actions: ["social-messaging:SendWhatsAppMessage"],
+        // Scope to this account's EUM Social resources once the phone number
+        // ARN is known. Format:
+        // arn:aws:social-messaging:<region>:<account>:phone-number-id/<id>
+        resources: ["*"],
+      })
+    );
+
+    // SES — send outbound email (e.g. order confirmations, support replies).
+    dispatcherRole.addToPolicy(
+      new iam.PolicyStatement({
+        sid: "SESSendEmail",
+        effect: iam.Effect.ALLOW,
+        actions: ["ses:SendEmail", "ses:SendRawEmail"],
+        // Restrict to the verified sending identity once the domain is verified.
+        // For now use "*" so the stack deploys before SES verification completes.
+        resources: ["*"],
+      })
+    );
+
+    // KMS — decrypt SNS messages encrypted with the topic CMK.
+    dispatcherRole.addToPolicy(
+      new iam.PolicyStatement({
+        sid: "TopicKMSDecrypt",
+        effect: iam.Effect.ALLOW,
+        actions: ["kms:Decrypt", "kms:GenerateDataKey"],
+        resources: [topicKey.keyArn],
+      })
+    );
+
+    // =========================================================================
+    // 4. Lambda Dispatcher — function placeholder
+    //
+    //    The actual handler code lives in ../lambda/dispatcher and is compiled
+    //    separately (see lambda/dispatcher/package.json). The asset path points
+    //    to the compiled output directory. Before the first `cdk deploy` run:
+    //      cd ../lambda/dispatcher && npm install && npm run build
+    //
+    //    EUM Social Integration point:
+    //    The Lambda is subscribed to ClawBoutiqueInbound via SNS. When a
+    //    customer sends a WhatsApp message to the registered phone number,
+    //    EUM Social → SNS → this Lambda.
+    // =========================================================================
+    const dispatcherLogGroup = new logs.LogGroup(
+      this,
+      "DispatcherLambdaLogGroup",
+      {
+        logGroupName: "/aws/lambda/ClawBoutiqueDispatcher",
+        retention: logs.RetentionDays.THREE_MONTHS,
+        removalPolicy: RemovalPolicy.RETAIN,
+      }
+    );
+
+    // -----------------------------------------------------------------------
+    // Lambda code source selection
+    //
+    // DEVELOPMENT / FIRST DEPLOY:
+    //   The inline placeholder below allows `cdk synth` and `cdk deploy` to
+    //   succeed before the dispatcher TypeScript has been compiled. The inline
+    //   handler does nothing but log the event and return success — safe to
+    //   deploy as a skeleton.
+    //
+    // PRODUCTION (after building the dispatcher):
+    //   1. cd ../lambda/dispatcher && npm install && npm run build
+    //   2. Comment out the `inlinePlaceholderCode` line.
+    //   3. Uncomment the `fromAsset` line below it.
+    //   4. Re-run: cdk deploy
+    // -----------------------------------------------------------------------
+    const inlinePlaceholderCode = lambda.Code.fromInline(`
+exports.handler = async (event) => {
+  // Placeholder — replace with compiled asset from lambda/dispatcher/dist
+  console.log('ClawBoutiqueDispatcher placeholder invoked', JSON.stringify(event));
+  return { statusCode: 200, body: 'ok' };
+};`);
+
+    // Compiled asset code (uncomment after running: npm run build in lambda/dispatcher)
+    // const compiledAssetCode = lambda.Code.fromAsset("../lambda/dispatcher/dist");
+
+    const dispatcherFn = new lambda.Function(this, "ClawBoutiqueDispatcher", {
+      functionName: "ClawBoutiqueDispatcher",
+      description:
+        "Routes SNS-wrapped inbound events (WhatsApp via EUM Social, SES email) " +
+        "to the OpenClaw gateway for processing and sends replies.",
+      runtime: lambda.Runtime.NODEJS_20_X,
+      code: inlinePlaceholderCode,
+      // Switch to compiled asset once dispatcher is built:
+      // code: compiledAssetCode,
+      handler: "index.handler",
+      role: dispatcherRole,
+      timeout: Duration.seconds(30),
+      memorySize: 256,
+      logGroup: dispatcherLogGroup,
+      environment: {
+        // Populated at deploy time; dispatcher reads these to know where to
+        // forward events and which SES identity to use.
+        INBOUND_TOPIC_ARN: inboundTopic.topicArn,
+        SES_FROM_ADDRESS: SUPPORT_EMAIL,
+        DOMAIN: DOMAIN,
+        // Set NODE_OPTIONS for source maps in error stack traces.
+        NODE_OPTIONS: "--enable-source-maps",
+      },
+      tracing: lambda.Tracing.ACTIVE,
+    });
+
+    // Subscribe the dispatcher to the inbound topic.
+    // Every WhatsApp webhook event and SES inbound notification will invoke it.
+    inboundTopic.addSubscription(
+      new subscriptions.LambdaSubscription(dispatcherFn)
+    );
+
+    // =========================================================================
+    // 5. SES — domain identity and inbound receipt rule
+    //
+    //    After CDK deploy, complete domain verification manually:
+    //      1. Add the CNAME / TXT / MX records to the DNS zone for DOMAIN.
+    //      2. The MX record must point to inbound-smtp.<region>.amazonaws.com
+    //         for SES receipt to work.
+    //      3. Verify the domain in SES console or via `aws sesv2 create-email-identity`.
+    //
+    //    The receipt rule set and rule below are created but the rule set must
+    //    be set as ACTIVE in the SES console (or via CLI) after deploy:
+    //      aws ses set-active-receipt-rule-set \
+    //        --rule-set-name ClawBoutiqueRuleSet \
+    //        --region <region>
+    // =========================================================================
+
+    // Receipt rule set — the container for all inbound routing rules.
+    const receiptRuleSet = new ses.ReceiptRuleSet(
+      this,
+      "ClawBoutiqueRuleSet",
+      {
+        receiptRuleSetName: "ClawBoutiqueRuleSet",
+        // dropSpam adds a Lambda-based spam/virus check before processing.
+        dropSpam: true,
+      }
+    );
+
+    // Inbound receipt rule: emails to support@clawboutique.com are published
+    // to the ClawBoutiqueInbound SNS topic for the dispatcher to handle.
+    receiptRuleSet.addRule("SupportInboundRule", {
+      enabled: true,
+      receiptRuleName: "ClawBoutiqueSupportInbound",
+      recipients: [SUPPORT_EMAIL],
+      scanEnabled: true,
+      tlsPolicy: ses.TlsPolicy.REQUIRE,
+      actions: [
+        new sesActions.Sns({
+          topic: inboundTopic,
+          // INCLUDE_HEADERS sends the full MIME headers in the SNS notification
+          // so the dispatcher can read subject, reply-to, etc.
+          encoding: sesActions.EmailEncoding.UTF8,
+        }),
+      ],
+    });
+
+    // =========================================================================
+    // 6. Secrets Manager — DB credentials secret
+    //
+    //    Placeholder values are used so the secret is created during deploy.
+    //    Replace actual values BEFORE the OpenClaw app starts:
+    //      aws secretsmanager put-secret-value \
+    //        --secret-id ClawBoutique/DbCredentials \
+    //        --secret-string '{"host":"...","port":"3306","dbname":"...","username":"...","password":"..."}'
+    //
+    //    RemovalPolicy.RETAIN ensures the secret is not deleted when the stack
+    //    is destroyed, preventing accidental loss of production credentials.
+    // =========================================================================
+    const dbCredentialsSecret = new secretsmanager.Secret(
+      this,
+      "ClawBoutiqueDbCredentials",
+      {
+        secretName: "ClawBoutique/DbCredentials",
+        description:
+          "Database credentials for the Claw Boutique OpenClaw application " +
+          "running on Lightsail. Replace placeholder values before first use.",
+        secretObjectValue: {
+          host: SecretValue.unsafePlainText("PLACEHOLDER_DB_HOST"),
+          port: SecretValue.unsafePlainText("3306"),
+          dbname: SecretValue.unsafePlainText("clawboutique"),
+          username: SecretValue.unsafePlainText("PLACEHOLDER_DB_USER"),
+          password: SecretValue.unsafePlainText("PLACEHOLDER_DB_PASSWORD"),
+        },
+        removalPolicy: RemovalPolicy.RETAIN,
+      }
+    );
+
+    // =========================================================================
+    // 7. Lightsail IAM role — OpenClaw application access
+    //
+    //    The OpenClaw app on Lightsail assumes this role to read DB credentials
+    //    from Secrets Manager. Because Lightsail instances cannot use EC2
+    //    instance profiles directly, the role is assumed via STS:AssumeRole
+    //    using long-term credentials stored on the instance, OR via an IAM
+    //    Identity Center permission set if the account is enrolled.
+    //
+    //    Trust policy:
+    //      If LIGHTSAIL_ACCOUNT_PRINCIPAL is set, trust that principal.
+    //      Otherwise fall back to trusting the current AWS account root
+    //      (allows any principal in the account to scope down via STS).
+    //
+    //    After deploy, create an IAM user / access key for the Lightsail
+    //    instance and attach an inline policy that allows only sts:AssumeRole
+    //    on this role ARN. Store the access key in the instance environment.
+    // =========================================================================
+    const lightsailPrincipal: iam.IPrincipal =
+      LIGHTSAIL_ACCOUNT_PRINCIPAL.length > 0
+        ? new iam.ArnPrincipal(LIGHTSAIL_ACCOUNT_PRINCIPAL)
+        : new iam.AccountRootPrincipal();
+
+    const lightsailRole = new iam.Role(this, "OpenClawLightsailRole", {
+      roleName: "OpenClawLightsailRole",
+      assumedBy: lightsailPrincipal,
+      description:
+        "Assumed by the OpenClaw application on Lightsail. " +
+        "Grants read-only access to the Claw Boutique DB credentials secret.",
+    });
+
+    // Grant read access to the DB credentials secret only.
+    // GetSecretValue is the minimum needed; DescribeSecret allows the app to
+    // check the secret ARN/name without retrieving the value.
+    lightsailRole.addToPolicy(
+      new iam.PolicyStatement({
+        sid: "ReadDbCredentials",
+        effect: iam.Effect.ALLOW,
+        actions: [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret",
+        ],
+        resources: [dbCredentialsSecret.secretArn],
+      })
+    );
+
+    // Allow the Lightsail role to decrypt the secret if it is KMS-encrypted.
+    // The DB credentials secret uses AWS-managed key by default; if you switch
+    // to a CMK, add a kms:Decrypt policy on that key and grant the role here.
+
+    // =========================================================================
+    // 8. Stack Outputs
+    // =========================================================================
+
+    // SNS Topic ARN — paste this into the End User Messaging Social console
+    // when configuring the event destination for your WhatsApp phone number.
+    new CfnOutput(this, "ClawBoutiqueInboundTopicArn", {
+      exportName: "ClawBoutiqueInboundTopicArn",
+      value: inboundTopic.topicArn,
+      description:
+        "SNS topic ARN for ClawBoutiqueInbound. " +
+        "Set as the event destination in the End User Messaging Social console " +
+        "for the registered WhatsApp phone number.",
+    });
+
+    // Lambda Dispatcher function name — useful for CI/CD pipelines and monitoring.
+    new CfnOutput(this, "DispatcherFunctionName", {
+      exportName: "ClawBoutiqueDispatcherFunctionName",
+      value: dispatcherFn.functionName,
+      description:
+        "Name of the Lambda Dispatcher function. " +
+        "Use this in CloudWatch dashboards, alarms, and CI/CD pipelines.",
+    });
+
+    // Lambda Dispatcher function ARN — for cross-stack references if needed.
+    new CfnOutput(this, "DispatcherFunctionArn", {
+      exportName: "ClawBoutiqueDispatcherFunctionArn",
+      value: dispatcherFn.functionArn,
+      description: "ARN of the Lambda Dispatcher function.",
+    });
+
+    // Lightsail IAM role ARN — configure this in the OpenClaw app's
+    // AWS credential configuration (e.g. ~/.aws/config role_arn).
+    new CfnOutput(this, "LightsailRoleArn", {
+      exportName: "OpenClawLightsailRoleArn",
+      value: lightsailRole.roleArn,
+      description:
+        "ARN of the IAM role assumed by OpenClaw on Lightsail for Secrets Manager access.",
+    });
+
+    // DB credentials secret ARN — reference in the OpenClaw app config.
+    new CfnOutput(this, "DbCredentialsSecretArn", {
+      exportName: "ClawBoutiqueDbCredentialsSecretArn",
+      value: dbCredentialsSecret.secretArn,
+      description:
+        "ARN of the Secrets Manager secret holding DB credentials. " +
+        "Replace placeholder values before starting the OpenClaw application.",
+    });
+
+    // SES receipt rule set name — must be activated manually after deploy.
+    new CfnOutput(this, "SesReceiptRuleSetName", {
+      exportName: "ClawBoutiqueSesReceiptRuleSetName",
+      value: receiptRuleSet.receiptRuleSetName,
+      description:
+        "Name of the SES receipt rule set. " +
+        "Run: aws ses set-active-receipt-rule-set --rule-set-name ClawBoutiqueRuleSet",
+    });
+  }
+}
