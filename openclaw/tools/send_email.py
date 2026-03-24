@@ -182,20 +182,21 @@ VALID_TEMPLATES = set(TEMPLATES.keys())
 # ---------------------------------------------------------------------------
 
 def get_ses_client():
-    """Build a boto3 SES client using env-based credentials."""
-    required = ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION")
-    missing = [k for k in required if not os.environ.get(k)]
-    if missing:
-        raise EnvironmentError(
-            f"Missing required environment variable(s): {', '.join(missing)}"
+    """Build a boto3 SES client using the default credential chain or explicit keys."""
+    region = os.environ.get("AWS_REGION", "us-east-1")
+
+    # Use explicit credentials if provided, otherwise fall back to default chain (IAM role, etc.)
+    access_key = os.environ.get("AWS_ACCESS_KEY_ID", "")
+    secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
+    if access_key and secret_key:
+        return boto3.client(
+            "ses",
+            region_name=region,
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
         )
 
-    return boto3.client(
-        "ses",
-        region_name=os.environ["AWS_REGION"],
-        aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
-        aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
-    )
+    return boto3.client("ses", region_name=region)
 
 
 def render_template(template_key: str, variables: dict) -> tuple[str, str, str]:

@@ -43,6 +43,7 @@ import type {
 
 const GATEWAY_URL = (process.env.OPENCLAW_GATEWAY_URL ?? "").replace(/\/$/, "");
 const GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN ?? "";
+const AGENT_BRIDGE_URL = (process.env.AGENT_BRIDGE_URL ?? "").replace(/\/$/, "");
 
 if (!GATEWAY_URL) {
   console.warn("[dispatcher] OPENCLAW_GATEWAY_URL is not set – all POSTs will fail");
@@ -69,32 +70,68 @@ function log(level: LogLevel, message: string, extra?: Record<string, unknown>):
 // HTTP helper
 // ---------------------------------------------------------------------------
 
-async function postToGateway(path: string, body: unknown): Promise<void> {
-  const url = `${GATEWAY_URL}${path}`;
+async function postToGateway(path: string, body: unknown): Promise<unknown> {
+  return postToUrl(`${GATEWAY_URL}${path}`, body);
+}
 
+async function postToUrl(url: string, body: unknown): Promise<unknown> {
   try {
     const response = await axios.post(url, body, {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${GATEWAY_TOKEN}`,
       },
-      timeout: 10_000, // 10 s – Lambda invocations are time-boxed
+      timeout: 25_000, // 25 s – allow time for agent processing
     });
 
-    log("INFO", `POST ${path} succeeded`, {
+    log("INFO", `POST succeeded`, {
       status: response.status,
       url,
     });
+    return response.data;
   } catch (err) {
     const axiosErr = err as AxiosError;
-    log("ERROR", `POST ${path} failed`, {
+    log("ERROR", `POST failed`, {
       url,
       status: axiosErr.response?.status,
       responseBody: axiosErr.response?.data,
       errorMessage: axiosErr.message,
     });
-    // Re-throw so the caller can decide whether to continue processing other records
     throw err;
+  }
+}
+
+/**
+ * Send a WhatsApp text reply via AWS End User Messaging Social (EUMS).
+ */
+async function sendWhatsAppReply(
+  to: string,
+  text: string,
+  phoneNumberId: string,
+): Promise<void> {
+  // Use the AWS SDK v3 via axios to the EUMS SendWhatsAppMessage API
+  // For simplicity in Lambda, we call the send_customer_reply tool via the bridge
+  // OR use the EUMS direct API. Using the bridge/tool approach:
+  const bridgeUrl = AGENT_BRIDGE_URL || GATEWAY_URL;
+  try {
+    await axios.post(`${bridgeUrl}/send-reply`, {
+      to,
+      text,
+      phoneNumberId,
+    }, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${GATEWAY_TOKEN}`,
+      },
+      timeout: 10_000,
+    });
+    log("INFO", "WhatsApp reply sent via bridge", { to });
+  } catch (err) {
+    // If bridge send-reply fails, log but don't throw — the agent response was already generated
+    log("WARN", "Failed to send WhatsApp reply via bridge", {
+      to,
+      error: (err as Error).message,
+    });
   }
 }
 
@@ -112,6 +149,7 @@ interface WhatsAppMessage {
   timestamp: string;
   type: string;
   text?: { body: string };
+  interactive?: { button_reply?: { title: string }; list_reply?: { title: string } };
   image?: { id: string; mime_type: string; sha256: string; caption?: string };
   audio?: { id: string; mime_type: string; sha256: string };
   document?: { id: string; mime_type: string; sha256: string; filename?: string };
@@ -254,9 +292,9 @@ async function handleWhatsAppRecord(record: SNSEventRecord): Promise<void> {
   }
 
   // ── Step 3: parse the inner WhatsApp payload (the double-parse) ──────────
-  let whatsAppPayload: WhatsAppWebhookPayload;
+  let innerParsed: Record<string, unknown>;
   try {
-    whatsAppPayload = JSON.parse(outerEnvelope.whatsAppWebhookEntry) as WhatsAppWebhookPayload;
+    innerParsed = JSON.parse(outerEnvelope.whatsAppWebhookEntry) as Record<string, unknown>;
   } catch (err) {
     log("ERROR", "Failed to parse inner whatsAppWebhookEntry JSON", {
       messageId: record.Sns.MessageId,
@@ -265,14 +303,31 @@ async function handleWhatsAppRecord(record: SNSEventRecord): Promise<void> {
     return;
   }
 
+  // EUMS sends the inner payload in two possible formats:
+  //   Format A (Meta Graph API style): {"object":"whatsapp_business_account","entry":[...]}
+  //   Format B (EUMS style):           {"id":"...","changes":[...]}  — the entry itself
+  // We normalise to Format A.
+  let entries: WhatsAppEntry[];
+  if (Array.isArray(innerParsed.entry)) {
+    entries = (innerParsed as unknown as WhatsAppWebhookPayload).entry;
+  } else if (Array.isArray(innerParsed.changes)) {
+    // Format B: the inner payload IS a single entry
+    entries = [innerParsed as unknown as WhatsAppEntry];
+  } else {
+    log("WARN", "Inner payload has neither entry[] nor changes[] – skipping", {
+      messageId: record.Sns.MessageId,
+      keys: Object.keys(innerParsed),
+    });
+    return;
+  }
+
   log("INFO", "Processing WhatsApp webhook payload", {
     messageId: record.Sns.MessageId,
-    object: whatsAppPayload.object,
-    entryCount: whatsAppPayload.entry?.length ?? 0,
+    entryCount: entries.length,
   });
 
   // Iterate over all entries and their changes
-  for (const entry of whatsAppPayload.entry ?? []) {
+  for (const entry of entries) {
     for (const change of entry.changes ?? []) {
       const value = change.value;
 
@@ -283,14 +338,36 @@ async function handleWhatsAppRecord(record: SNSEventRecord): Promise<void> {
           phoneNumberId: value.metadata?.phone_number_id,
         });
 
-        await postToGateway("/inbound/whatsapp", {
-          source: "whatsapp",
-          phoneNumberId: value.metadata?.phone_number_id,
-          displayPhoneNumber: value.metadata?.display_phone_number,
-          contacts: value.contacts ?? [],
-          messages: value.messages,
-          rawEntry: entry,
-        });
+        // Route each message to the Agent Bridge for processing
+        for (const msg of value.messages) {
+          const senderPhone = msg.from ?? "";
+          const messageText =
+            msg.text?.body ??
+            msg.interactive?.button_reply?.title ??
+            msg.interactive?.list_reply?.title ??
+            "";
+          const contactName =
+            value.contacts?.find((c: Record<string, unknown>) => c.wa_id === senderPhone)
+              ?.profile?.name ?? "";
+
+          if (!messageText) {
+            log("WARN", "Skipping non-text message", {
+              type: msg.type,
+              from: senderPhone,
+            });
+            continue;
+          }
+
+          const bridgeUrl = AGENT_BRIDGE_URL || GATEWAY_URL;
+          await postToUrl(`${bridgeUrl}/inbound/whatsapp`, {
+            from: senderPhone,
+            text: messageText,
+            name: contactName,
+            messageId: msg.id,
+            timestamp: msg.timestamp,
+            phoneNumberId: value.metadata?.phone_number_id,
+          });
+        }
       }
 
       // ── Delivery / read receipts (statuses) ─────────────────────────────

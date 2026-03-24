@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claw Boutique</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Inter"', 'system-ui', 'sans-serif'],
+            display: ['"Playfair Display"', 'Georgia', 'serif'],
+          },
+          colors: {
+            amber: {
+              50:  '#fffbeb',
+              100: '#fef3c7',
+              200: '#fde68a',
+              300: '#fcd34d',
+              400: '#fbbf24',
+              500: '#f59e0b',
+              600: '#d97706',
+              700: '#b45309',
+              800: '#92400e',
+              900: '#78350f',
+            },
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .font-display { font-family: 'Playfair Display', Georgia, serif; }
+
+    /* Smooth cart slide-over */
+    #cart-panel {
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #cart-overlay {
+      transition: opacity 0.3s ease;
+    }
+
+    /* Subtle product card hover lift */
+    .product-card:hover {
+      transform: translateY(-2px);
+    }
+    .product-card {
+      transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    }
+
+    /* Flash toast */
+    #cart-flash {
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    /* Focus ring */
+    input:focus, button:focus-visible {
+      outline: 2px solid #92400e;
+      outline-offset: 2px;
+    }
+
+    /* Scrollbar in cart */
+    #cart-items::-webkit-scrollbar { width: 4px; }
+    #cart-items::-webkit-scrollbar-track { background: transparent; }
+    #cart-items::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 9999px; }
+
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+
+<body class="bg-stone-50 text-stone-900 min-h-screen">
+
+  <!-- =====================================================================
+       HEADER
+  ====================================================================== -->
+  <header class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-stone-200">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+
+      <!-- Logo / Brand -->
+      <a href="#" class="flex items-center gap-2 group" onclick="backToShopping?.(); return false;">
+        <span class="text-amber-700 text-xl leading-none select-none group-hover:text-amber-600 transition-colors">✦</span>
+        <span class="font-display text-xl font-semibold text-stone-800 tracking-tight group-hover:text-amber-800 transition-colors">
+          Claw Boutique
+        </span>
+      </a>
+
+      <!-- Right nav -->
+      <div class="flex items-center gap-4">
+        <!-- WhatsApp quick link -->
+        <a
+          href="https://wa.me/15550001234"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="hidden sm:flex items-center gap-1.5 text-xs text-stone-500 hover:text-amber-700 transition-colors font-medium"
+          title="Chat on WhatsApp"
+        >
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+          </svg>
+          Chat with us
+        </a>
+
+        <!-- Cart button -->
+        <button
+          id="cart-btn"
+          class="relative flex items-center gap-2 bg-amber-800 hover:bg-amber-700 active:bg-amber-900 text-white text-sm font-medium px-4 py-2 rounded-full transition-colors duration-200"
+          aria-label="Open shopping cart"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+          </svg>
+          <span class="hidden sm:inline">Cart</span>
+          <span
+            id="cart-badge"
+            class="hidden absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center leading-none"
+          >0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- =====================================================================
+       FLASH TOAST
+  ====================================================================== -->
+  <div
+    id="cart-flash"
+    class="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-stone-800 text-white text-sm font-medium px-5 py-2.5 rounded-full shadow-lg opacity-0 translate-y-2 pointer-events-none whitespace-nowrap"
+  ></div>
+
+  <!-- =====================================================================
+       CART OVERLAY + PANEL
+  ====================================================================== -->
+
+  <!-- Overlay -->
+  <div
+    id="cart-overlay"
+    class="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm opacity-0 pointer-events-none"
+  ></div>
+
+  <!-- Slide-over panel -->
+  <aside
+    id="cart-panel"
+    class="fixed top-0 right-0 z-50 h-full w-full max-w-sm bg-white shadow-2xl translate-x-full flex flex-col"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Shopping cart"
+  >
+    <!-- Panel header -->
+    <div class="flex items-center justify-between px-5 py-4 border-b border-stone-100">
+      <h2 id="cart-header-title" class="font-display text-lg font-semibold text-stone-800">Your Cart</h2>
+      <button
+        id="close-cart-btn"
+        class="text-stone-400 hover:text-stone-600 transition-colors p-1 rounded-full hover:bg-stone-100"
+        aria-label="Close cart"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Empty state -->
+    <div id="cart-empty" class="flex flex-col items-center justify-center flex-1 gap-3 text-stone-400 px-8 text-center">
+      <svg class="w-12 h-12 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+          d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+      </svg>
+      <p class="text-sm font-medium">Your cart is empty</p>
+      <p class="text-xs leading-relaxed">Add some pieces to get started.</p>
+    </div>
+
+    <!-- Cart items -->
+    <div id="cart-items" class="flex-1 overflow-y-auto px-5 py-2"></div>
+
+    <!-- Cart footer -->
+    <div id="cart-footer" class="hidden border-t border-stone-100 px-5 py-4 bg-white">
+      <div class="flex items-center justify-between mb-4">
+        <span class="text-stone-500 text-sm">Order Total</span>
+        <span id="cart-total" class="text-stone-900 font-bold text-xl">$0.00</span>
+      </div>
+      <button
+        id="checkout-btn"
+        class="w-full bg-amber-800 hover:bg-amber-700 active:bg-amber-900 text-white font-semibold py-3.5 rounded-full text-sm tracking-wide transition-colors duration-200"
+      >
+        Proceed to Checkout
+      </button>
+      <p id="shipping-msg" class="text-center text-xs text-stone-400 mt-3">Free shipping on orders over $100</p>
+    </div>
+  </aside>
+
+  <!-- =====================================================================
+       MAIN CONTENT
+  ====================================================================== -->
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+
+    <!-- ==================================================================
+         CATALOG VIEW
+    =================================================================== -->
+    <section id="catalog-view">
+
+      <!-- Hero -->
+      <div class="text-center py-10 sm:py-14">
+        <p class="text-amber-700 text-xs font-semibold uppercase tracking-widest mb-3">New Collection</p>
+        <h1 class="font-display text-4xl sm:text-5xl font-semibold text-stone-800 leading-tight">
+          Spring / Summer<br class="hidden sm:block" />
+          <em class="not-italic text-amber-800">2026</em>
+        </h1>
+        <p class="mt-4 text-stone-500 text-sm max-w-md mx-auto leading-relaxed">
+          Effortless silhouettes and warm textures for the season ahead.
+          Thoughtfully curated, thoughtfully made.
+        </p>
+      </div>
+
+      <!-- Category tabs -->
+      <div id="category-tabs" class="flex gap-2 justify-center mb-8 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap scrollbar-hide"></div>
+
+      <!-- Product grid -->
+      <div
+        id="product-grid"
+        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
+      ></div>
+    </section>
+
+    <!-- ==================================================================
+         CHECKOUT VIEW
+    =================================================================== -->
+    <section id="checkout-view" class="hidden">
+      <div class="max-w-2xl mx-auto">
+
+        <!-- Back link -->
+        <button
+          id="back-to-catalog-btn"
+          class="flex items-center gap-1.5 text-stone-500 hover:text-amber-800 text-sm font-medium mb-6 transition-colors"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          </svg>
+          Back to shopping
+        </button>
+
+        <h2 class="font-display text-3xl font-semibold text-stone-800 mb-8">Checkout</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+          <!-- Contact form -->
+          <div>
+            <h3 class="font-semibold text-stone-700 mb-4 text-sm uppercase tracking-wider">Your Details</h3>
+            <form id="checkout-form" class="flex flex-col gap-4" novalidate>
+
+              <div>
+                <label for="customer_name" class="block text-xs font-medium text-stone-600 mb-1.5">Full Name</label>
+                <input
+                  type="text"
+                  id="customer_name"
+                  name="customer_name"
+                  required
+                  autocomplete="name"
+                  placeholder="Jane Smith"
+                  class="w-full border border-stone-300 rounded-xl px-4 py-3 text-sm text-stone-800 placeholder-stone-400 focus:border-amber-700 focus:ring-0 outline-none transition-colors bg-white"
+                />
+              </div>
+
+              <div>
+                <label for="customer_email" class="block text-xs font-medium text-stone-600 mb-1.5">Email Address</label>
+                <input
+                  type="email"
+                  id="customer_email"
+                  name="customer_email"
+                  required
+                  autocomplete="email"
+                  placeholder="jane@example.com"
+                  class="w-full border border-stone-300 rounded-xl px-4 py-3 text-sm text-stone-800 placeholder-stone-400 focus:border-amber-700 focus:ring-0 outline-none transition-colors bg-white"
+                />
+              </div>
+
+              <div>
+                <label for="customer_phone" class="block text-xs font-medium text-stone-600 mb-1.5">
+                  Phone Number
+                  <span class="text-stone-400 font-normal">(with country code)</span>
+                </label>
+                <input
+                  type="tel"
+                  id="customer_phone"
+                  name="customer_phone"
+                  required
+                  autocomplete="tel"
+                  placeholder="+14155551234"
+                  class="w-full border border-stone-300 rounded-xl px-4 py-3 text-sm text-stone-800 placeholder-stone-400 focus:border-amber-700 focus:ring-0 outline-none transition-colors bg-white"
+                />
+                <p class="text-[11px] text-stone-400 mt-1">Include country code, e.g. +1 for US</p>
+              </div>
+
+              <!-- Error -->
+              <div id="checkout-error" class="hidden bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-4 py-3"></div>
+
+              <button
+                id="place-order-btn"
+                type="submit"
+                class="w-full bg-amber-800 hover:bg-amber-700 active:bg-amber-900 text-white font-semibold py-4 rounded-full text-sm tracking-wide transition-colors duration-200 mt-2"
+              >
+                Place Order
+              </button>
+
+              <p class="text-center text-xs text-stone-400">
+                You'll receive a confirmation email after placing your order.
+              </p>
+            </form>
+          </div>
+
+          <!-- Order summary -->
+          <div>
+            <h3 class="font-semibold text-stone-700 mb-4 text-sm uppercase tracking-wider">Order Summary</h3>
+            <div class="bg-stone-50 rounded-2xl border border-stone-200 p-5">
+              <div id="checkout-summary" class="divide-y divide-stone-100"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================
+         ORDER CONFIRMATION VIEW
+    =================================================================== -->
+    <section id="confirmation-view" class="hidden">
+      <div class="max-w-lg mx-auto text-center py-10">
+
+        <!-- Success icon -->
+        <div class="w-16 h-16 bg-amber-50 border-2 border-amber-200 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg class="w-8 h-8 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+        </div>
+
+        <h2 class="font-display text-3xl font-semibold text-stone-800 mb-2">Order Confirmed!</h2>
+        <p class="text-stone-500 text-sm leading-relaxed mb-1">
+          Thank you, <span id="conf-customer-name" class="text-stone-700 font-medium"></span>!
+          Your order has been placed successfully.
+        </p>
+        <p class="text-stone-400 text-xs mb-6">
+          A confirmation email is on its way to <span id="conf-customer-email" class="text-stone-500 font-medium"></span>
+        </p>
+
+        <!-- Order ID pill -->
+        <div class="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-full px-5 py-2 mb-8">
+          <span class="text-xs text-amber-700 font-medium uppercase tracking-wider">Order ID</span>
+          <span id="conf-order-id" class="text-amber-900 font-bold text-sm font-mono"></span>
+        </div>
+
+        <!-- Items -->
+        <div class="bg-white rounded-2xl border border-stone-200 p-5 text-left mb-6">
+          <div id="conf-items" class="divide-y divide-stone-100"></div>
+          <div class="flex justify-between items-center pt-4 mt-2">
+            <span class="font-semibold text-stone-700 text-sm">Total Paid</span>
+            <span id="conf-total" class="font-bold text-amber-800 text-lg"></span>
+          </div>
+        </div>
+
+        <!-- WhatsApp help -->
+        <a
+          href="https://wa.me/15550001234?text=Hi%2C%20I%20need%20help%20with%20my%20order"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex items-center justify-center gap-2.5 w-full bg-[#25d366] hover:bg-[#20bd5b] active:bg-[#1caa52] text-white font-semibold py-3.5 rounded-full text-sm tracking-wide transition-colors duration-200 mb-4"
+        >
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+          </svg>
+          Need help? Chat with us on WhatsApp
+        </a>
+
+        <button
+          id="conf-back-btn"
+          class="w-full border border-stone-300 hover:border-amber-700 text-stone-600 hover:text-amber-800 font-medium py-3.5 rounded-full text-sm tracking-wide transition-colors duration-200"
+        >
+          Back to Shopping
+        </button>
+
+        <!-- WhatsApp survey notice -->
+        <div id="review-section" class="mt-8 pt-6 border-t border-stone-200">
+          <div class="bg-green-50 border border-green-200 rounded-2xl p-5 flex items-center gap-4">
+            <svg class="w-8 h-8 text-[#25d366] flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+            </svg>
+            <div>
+              <p class="text-green-800 font-medium text-sm">Check your WhatsApp for a quick survey.</p>
+              <p class="text-green-700 text-xs mt-0.5">We just sent you a message asking to rate your experience (1-5). If you rate below 2, our store owner will follow up personally.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- =====================================================================
+       FOOTER
+  ====================================================================== -->
+  <footer class="mt-16 border-t border-stone-200 bg-white">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-6">
+
+        <!-- Brand -->
+        <div class="flex flex-col items-center sm:items-start gap-1">
+          <div class="flex items-center gap-2">
+            <span class="text-amber-700">✦</span>
+            <span class="font-display font-semibold text-stone-800">Claw Boutique</span>
+          </div>
+          <p class="text-xs text-stone-400">Thoughtfully curated fashion</p>
+        </div>
+
+        <!-- WhatsApp CTA -->
+        <a
+          href="https://wa.me/15550001234"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex items-center gap-2.5 bg-[#25d366]/10 hover:bg-[#25d366]/20 border border-[#25d366]/30 text-[#128c4e] font-medium text-sm px-5 py-2.5 rounded-full transition-colors duration-200"
+        >
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+          </svg>
+          Need help? Chat with us on WhatsApp
+        </a>
+
+      </div>
+
+      <div class="mt-8 pt-6 border-t border-stone-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-stone-400">
+        <p>&copy; 2026 Claw Boutique. All rights reserved.</p>
+        <p>Powered by <span class="font-medium text-stone-500">OpenClaw</span></p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Runtime config (API URL set after deploy) -->
+  <script src="./config.js"></script>
+  <!-- Store JS -->
+  <script src="./js/store.js"></script>
+</body>
+</html>

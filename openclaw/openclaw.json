@@ -1,0 +1,585 @@
+{
+  "_comment": "OpenClaw configuration for Claw Boutique. Edit this file to adjust gateway, tools, or model settings.",
+  "_version": "1.0.0",
+  "_updated": "2026-03-23",
+
+  // ---------------------------------------------------------------------------
+  // Gateway — HTTPS listener settings and security
+  // ---------------------------------------------------------------------------
+  "gateway": {
+    "host": "0.0.0.0",
+    "port": 8443,
+    "tls": {
+      "enabled": true,
+      "cert_file": "/etc/openclaw/tls/cert.pem",
+      "key_file": "/etc/openclaw/tls/key.pem"
+    },
+    "auth": {
+      "token_rotation": "daily",
+      "token_env_var": "OPENCLAW_GATEWAY_TOKEN",
+      "_comment": "Rotate OPENCLAW_GATEWAY_TOKEN daily. The gateway reloads it from the env var on each rotation."
+    },
+    "allowed_origins": [
+      "https://api.clawboutique.ph",
+      "https://webhooks.clawboutique.ph"
+    ],
+    "request_timeout_seconds": 30,
+    "max_body_bytes": 65536
+  },
+
+  // ---------------------------------------------------------------------------
+  // Model — AWS Bedrock, Claude claude-sonnet-4.6
+  // ---------------------------------------------------------------------------
+  "model": {
+    "provider": "bedrock",
+    "model_id": "anthropic.claude-sonnet-4-6",
+    "_comment": "Requires AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_REGION in the environment.",
+    "region": "${AWS_REGION}",
+    "inference_config": {
+      "max_tokens": 2048,
+      "temperature": 0.3,
+      "_comment": "Low temperature keeps product/order facts reliable; raise toward 0.7 for more natural chat."
+    }
+  },
+
+  // ---------------------------------------------------------------------------
+  // System prompt — embedded from system-prompt.md at startup
+  // ---------------------------------------------------------------------------
+  "system_prompt": {
+    "source": "file",
+    "path": "./system-prompt.md",
+    "_comment": "Edit system-prompt.md then reload the config (see README) to apply changes without redeployment."
+  },
+
+  // ---------------------------------------------------------------------------
+  // Context / memory — per-customer conversation state
+  // ---------------------------------------------------------------------------
+  "context": {
+    "strategy": "per_customer",
+    "key_field": "customer_phone",
+    "_comment": "Conversations are keyed by the customer's E.164 phone number. Each customer maintains independent state.",
+    "max_history_messages": 40,
+    "ttl_seconds": 86400,
+    "storage": {
+      "backend": "redis",
+      "host": "${REDIS_HOST:-localhost}",
+      "port": 6379,
+      "db": 0,
+      "password_env": "REDIS_PASSWORD",
+      "_comment": "Set REDIS_HOST and REDIS_PASSWORD in the environment. Defaults to localhost if unset."
+    }
+  },
+
+  // ---------------------------------------------------------------------------
+  // Store API — tools call the Store API via HTTP instead of connecting to MySQL directly
+  // ---------------------------------------------------------------------------
+  "store_api": {
+    "_comment": "All tool scripts read STORE_API_URL and optionally STORE_API_KEY. Set them in your Lightsail instance or .env file.",
+    "url_env": "STORE_API_URL",
+    "key_env": "STORE_API_KEY"
+  },
+
+  // ---------------------------------------------------------------------------
+  // Sandbox — Docker execution environment for Python tool scripts
+  // ---------------------------------------------------------------------------
+  "sandbox": {
+    "enabled": true,
+    "runtime": "docker",
+    "image": "claw-boutique/openclaw-tools:latest",
+    "_comment": "Build the tools image from openclaw/tools/Dockerfile. Tools run in isolated containers with env vars passed through.",
+    "allowed_env_vars": [
+      "STORE_API_URL",
+      "STORE_API_KEY",
+      "WHATSAPP_PHONE_NUMBER_ID",
+      "WHATSAPP_WABA_ID",
+      "AWS_ACCESS_KEY_ID",
+      "AWS_SECRET_ACCESS_KEY",
+      "AWS_REGION",
+      "SES_FROM_EMAIL",
+      "SES_FROM_NAME",
+      "SELLER_PHONE",
+      "SELLER_EMAIL",
+      "SELLER_NAME"
+    ],
+    "network": "bridge",
+    "memory_mb": 256,
+    "cpu_shares": 512,
+    "execution_timeout_seconds": 20,
+    "read_only_filesystem": true,
+    "_security_comment": "Containers run read-only with no write access to the host filesystem."
+  },
+
+  // ---------------------------------------------------------------------------
+  // Channels — incoming message sources
+  // ---------------------------------------------------------------------------
+  "channels": {
+    "whatsapp_customer": {
+      "type": "eums_sns",
+      "_comment": "Inbound messages from AWS End User Messaging Social via SNS → Lambda → OpenClaw gateway.",
+      "phone_number_id_env": "WHATSAPP_PHONE_NUMBER_ID",
+      "waba_id_env": "WHATSAPP_WABA_ID",
+      "webhook_path": "/inbound/whatsapp"
+    },
+    "whatsapp_seller": {
+      "type": "whatsapp_personal",
+      "_comment": "Messages from the seller's personal WhatsApp (linked device). Used for operational commands.",
+      "seller_phone_env": "SELLER_PHONE",
+      "webhook_path": "/webhook/seller"
+    },
+    "email": {
+      "type": "ses_inbound",
+      "_comment": "SES inbound email routed via SNS/SQS into OpenClaw for support triage.",
+      "sqs_queue_url_env": "SES_INBOUND_SQS_URL",
+      "poll_interval_seconds": 30,
+      "from_filter": null
+    }
+  },
+
+  // ---------------------------------------------------------------------------
+  // Tools — map each Python script to a callable tool definition
+  // ---------------------------------------------------------------------------
+  "tools": [
+
+    // -------------------------------------------------------------------------
+    // lookup_order
+    // -------------------------------------------------------------------------
+    {
+      "name": "lookup_order",
+      "description": "Retrieve full details for a single order, including customer info, line items, status, and tracking. Call this before answering any order-related question.",
+      "script": "tools/lookup_order.py",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "The unique order ID (UUID) to look up."
+          }
+        },
+        "required": ["order_id"]
+      },
+      "returns": {
+        "_comment": "Returns an order object: {id, status, items[], customer{}, total, shipped_date, tracking} or {error}."
+      },
+      "cli_arg_style": "double_dash"
+    },
+
+    // -------------------------------------------------------------------------
+    // list_products
+    // -------------------------------------------------------------------------
+    {
+      "name": "list_products",
+      "description": "List available products from the catalog. Optionally filter by category, size, or color. Always call this before quoting products or creating an order.",
+      "script": "tools/list_products.py",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "Product category to filter by, e.g. 'tops', 'bottoms', 'accessories'. Optional."
+          },
+          "size": {
+            "type": "string",
+            "description": "Size to filter by, e.g. 'S', 'M', 'L', 'XL'. Optional."
+          },
+          "color": {
+            "type": "string",
+            "description": "Color to filter by, e.g. 'black', 'white', 'pink'. Optional."
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "_comment": "Returns an array of product objects: [{id, name, category, size, color, price, stock_qty}] or {error}."
+      },
+      "cli_arg_style": "double_dash"
+    },
+
+    // -------------------------------------------------------------------------
+    // create_order
+    // -------------------------------------------------------------------------
+    {
+      "name": "create_order",
+      "description": "Create a new order for a customer. Upserts the customer record if they are new. Only call this after the customer has explicitly confirmed the order summary. Does NOT send confirmation messages — call send_customer_reply and send_email separately after success.",
+      "script": "tools/create_order.py",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_phone": {
+            "type": "string",
+            "description": "Customer phone number in E.164 format, e.g. '+639171234567'."
+          },
+          "customer_name": {
+            "type": "string",
+            "description": "Customer's full name."
+          },
+          "customer_email": {
+            "type": "string",
+            "description": "Customer's email address."
+          },
+          "items": {
+            "type": "array",
+            "description": "List of items to order. Each item must have a product_id (from list_products) and a qty.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "product_id": {
+                  "type": "string",
+                  "description": "Product ID retrieved from list_products."
+                },
+                "qty": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Quantity to order."
+                }
+              },
+              "required": ["product_id", "qty"]
+            },
+            "minItems": 1
+          }
+        },
+        "required": ["customer_phone", "customer_name", "customer_email", "items"]
+      },
+      "returns": {
+        "_comment": "Returns {order_id, total, confirmation_sent: false} or {error}. confirmation_sent is always false — you must send notifications manually."
+      },
+      "cli_arg_style": "double_dash",
+      "cli_json_args": ["items"]
+    },
+
+    // -------------------------------------------------------------------------
+    // update_order_status
+    // -------------------------------------------------------------------------
+    {
+      "name": "update_order_status",
+      "description": "Update the status of an existing order. Valid transitions: pending -> confirmed -> shipped -> delivered. Also accepts 'cancelled' from pending or confirmed. A tracking_url is required when setting status to 'shipped'.",
+      "script": "tools/update_order_status.py",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "The order ID to update."
+          },
+          "new_status": {
+            "type": "string",
+            "enum": ["pending", "confirmed", "shipped", "delivered", "cancelled"],
+            "description": "The target status for the order."
+          },
+          "tracking_url": {
+            "type": "string",
+            "description": "Shipping carrier tracking URL. Required when new_status is 'shipped'. Optional for other statuses."
+          }
+        },
+        "required": ["order_id", "new_status"]
+      },
+      "returns": {
+        "_comment": "Returns {success, status_before, status_after} or {error}."
+      },
+      "cli_arg_style": "double_dash"
+    },
+
+    // -------------------------------------------------------------------------
+    // send_customer_reply
+    // -------------------------------------------------------------------------
+    {
+      "name": "send_customer_reply",
+      "description": "Send a WhatsApp message to a customer. Use message_type='text' for free-form replies. Use message_type='template' for pre-approved Meta templates (required for first-contact or post-24h messages). The message_content must be base64-encoded when using type='text'.",
+      "script": "tools/send_customer_reply.py",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_phone": {
+            "type": "string",
+            "description": "Recipient phone number in E.164 format."
+          },
+          "message_type": {
+            "type": "string",
+            "enum": ["text", "template"],
+            "description": "'text' for free-form messages within the 24-hour window. 'template' for approved Meta templates."
+          },
+          "message_content": {
+            "type": "string",
+            "description": "Message body text, base64-encoded. Required when message_type is 'text'."
+          },
+          "template_name": {
+            "type": "string",
+            "description": "Approved WhatsApp template name. Required when message_type is 'template'."
+          },
+          "template_vars": {
+            "type": "object",
+            "description": "Positional template parameters as a JSON object, e.g. {\"1\": \"Jane\", \"2\": \"ORD-001\"}. Optional, used with message_type='template'.",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["customer_phone", "message_type"]
+      },
+      "returns": {
+        "_comment": "Returns {success, message_id} or {error}."
+      },
+      "cli_arg_style": "double_dash",
+      "cli_json_args": ["template_vars"]
+    },
+
+    // -------------------------------------------------------------------------
+    // send_email
+    // -------------------------------------------------------------------------
+    {
+      "name": "send_email",
+      "description": "Send a transactional email to a customer or the seller via Amazon SES. Only the three approved templates may be used: order_confirmation, order_shipped, escalation_alert.",
+      "script": "tools/send_email.py",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recipient_email": {
+            "type": "string",
+            "description": "Destination email address."
+          },
+          "template_name": {
+            "type": "string",
+            "enum": ["order_confirmation", "order_shipped", "escalation_alert"],
+            "description": "The email template to render and send."
+          },
+          "variables": {
+            "type": "object",
+            "description": "Template substitution variables. Required keys vary by template: order_confirmation needs {customer_name, order_id, items_summary, total, shop_url}; order_shipped needs {customer_name, order_id, tracking_url, carrier}; escalation_alert needs {customer_phone, reason, summary, seller_name}.",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["recipient_email", "template_name", "variables"]
+      },
+      "returns": {
+        "_comment": "Returns {success, email_id} or {error}."
+      },
+      "cli_arg_style": "double_dash",
+      "cli_json_args": ["variables"]
+    },
+
+    // -------------------------------------------------------------------------
+    // escalate_to_human
+    // -------------------------------------------------------------------------
+    {
+      "name": "escalate_to_human",
+      "description": "Escalate a customer conversation to the store owner. Records the escalation in the database, sends a WhatsApp alert to the seller (SELLER_PHONE), and optionally an email alert (SELLER_EMAIL). Call this whenever the situation is beyond automated resolution.",
+      "script": "tools/escalate_to_human.py",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "Brief reason for escalation, e.g. 'refund request', 'wrong item received', 'payment dispute'."
+          },
+          "customer_phone": {
+            "type": "string",
+            "description": "The customer's E.164 phone number."
+          },
+          "summary": {
+            "type": "string",
+            "description": "A concise summary of the conversation and the issue, giving the seller the context they need to follow up."
+          }
+        },
+        "required": ["reason", "customer_phone", "summary"]
+      },
+      "returns": {
+        "_comment": "Returns {success, escalation_id, seller_notified} or {error}."
+      },
+      "cli_arg_style": "double_dash"
+    },
+
+    // -------------------------------------------------------------------------
+    // save_memory
+    // -------------------------------------------------------------------------
+    {
+      "name": "save_memory",
+      "description": "Save an interaction memory for future reference. Call this after resolving a customer issue that required escalation or creative problem-solving. The memory helps you handle similar situations autonomously next time.",
+      "script": "tools/save_memory.py",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_phone": {
+            "type": "string",
+            "description": "Customer phone in E.164 format. Optional — omit for general learnings."
+          },
+          "interaction_type": {
+            "type": "string",
+            "enum": ["refund_request", "wrong_item", "shipping_delay", "size_exchange", "payment_issue", "general_inquiry", "complaint_resolved", "custom_request"],
+            "description": "Category of the interaction."
+          },
+          "summary": {
+            "type": "string",
+            "description": "What happened — the situation and what the customer needed."
+          },
+          "resolution": {
+            "type": "string",
+            "description": "How it was resolved — the action taken and the outcome."
+          },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Searchable tags for this memory, e.g. ['refund', 'wrong_item', 'resolved']."
+          }
+        },
+        "required": ["interaction_type", "summary"]
+      },
+      "returns": {
+        "_comment": "Returns {success, memory_id, interaction_type} or {error}."
+      },
+      "cli_arg_style": "double_dash",
+      "cli_json_args": ["tags"]
+    },
+
+    // -------------------------------------------------------------------------
+    // recall_memory
+    // -------------------------------------------------------------------------
+    {
+      "name": "recall_memory",
+      "description": "Search saved interaction memories to find how similar past situations were resolved. Call this before escalating — if a similar case was resolved before, you may be able to handle it autonomously using the same approach.",
+      "script": "tools/recall_memory.py",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_phone": {
+            "type": "string",
+            "description": "Filter by customer phone. Optional."
+          },
+          "interaction_type": {
+            "type": "string",
+            "description": "Filter by interaction type. Optional."
+          },
+          "search": {
+            "type": "string",
+            "description": "Keyword search across summary and resolution text. Optional."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of memories to return. Default 10.",
+            "default": 10
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "_comment": "Returns {memories: [{id, customer_phone, interaction_type, summary, resolution, tags, created_at}], count} or {error}."
+      },
+      "cli_arg_style": "double_dash"
+    },
+
+    // -------------------------------------------------------------------------
+    // handle_review
+    // -------------------------------------------------------------------------
+    {
+      "name": "handle_review",
+      "description": "Process a customer review. Auto-thanks 4-5 star reviews with a personalized message. Escalates 1-2 star reviews to the seller with a drafted apology response. Sends a follow-up for 3-star reviews. Always call send_customer_reply afterward with the drafted_response.",
+      "script": "tools/handle_review.py",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_phone": {
+            "type": "string",
+            "description": "Reviewer's phone in E.164 format."
+          },
+          "customer_name": {
+            "type": "string",
+            "description": "Reviewer's display name."
+          },
+          "rating": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5,
+            "description": "Star rating (1-5)."
+          },
+          "review_text": {
+            "type": "string",
+            "description": "The review content."
+          },
+          "order_id": {
+            "type": "integer",
+            "description": "Order ID the review is about. Optional."
+          }
+        },
+        "required": ["customer_phone", "customer_name", "rating", "review_text"]
+      },
+      "returns": {
+        "_comment": "Returns {success, review_id, rating, action, escalate_to_seller, drafted_response, seller_alert?} or {error}."
+      },
+      "cli_arg_style": "double_dash"
+    },
+
+    // -------------------------------------------------------------------------
+    // recover_cart
+    // -------------------------------------------------------------------------
+    {
+      "name": "recover_cart",
+      "description": "Find abandoned shopping carts and generate personalized recovery messages. Instead of generic emails, creates tailored WhatsApp messages referencing the specific items the customer was browsing, with incentives like free shipping. Call send_customer_reply with the recovery_message afterward.",
+      "script": "tools/recover_cart.py",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_phone": {
+            "type": "string",
+            "description": "Check a specific customer's abandoned cart. Optional."
+          },
+          "check_all": {
+            "type": "boolean",
+            "description": "Set to true to find all abandoned carts. Default false."
+          },
+          "hours": {
+            "type": "integer",
+            "description": "Hours since last activity to consider cart abandoned. Default 2.",
+            "default": 2
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "_comment": "Returns {success, abandoned_carts: [{customer_phone, customer_name, cart_items, product_names, recovery_message}], count} or {error}."
+      },
+      "cli_arg_style": "double_dash"
+    },
+
+    // -------------------------------------------------------------------------
+    // analyze_stock
+    // -------------------------------------------------------------------------
+    {
+      "name": "analyze_stock",
+      "description": "Analyze stock levels and predict reorder needs based on sell-through rates. Instead of simple low-stock alerts, calculates daily sell rates, predicts days until stockout, and suggests reorder quantities. Call this proactively when the seller asks about inventory or periodically during low-traffic hours.",
+      "script": "tools/analyze_stock.py",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "Filter by product category. Optional."
+          },
+          "product_id": {
+            "type": "integer",
+            "description": "Analyze a specific product. Optional."
+          },
+          "low_stock_only": {
+            "type": "boolean",
+            "description": "Only show products below the stock threshold. Default false."
+          },
+          "threshold": {
+            "type": "integer",
+            "description": "Stock threshold for low-stock classification. Default 10.",
+            "default": 10
+          },
+          "days": {
+            "type": "integer",
+            "description": "Number of days of order history to analyze. Default 30.",
+            "default": 30
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "_comment": "Returns {success, analysis: [{product_id, name, current_stock, daily_sell_rate, days_until_stockout, suggested_reorder_qty, urgency}], alerts[], critical_count} or {error}."
+      },
+      "cli_arg_style": "double_dash"
+    }
+
+  ]
+}

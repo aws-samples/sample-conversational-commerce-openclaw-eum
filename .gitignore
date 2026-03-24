@@ -5,7 +5,53 @@ dist/
 .env.local
 *.pyc
 __pycache__/
+# Vendored Python packages in Lambda directories
+lambda/store-api/boto3*/
+lambda/store-api/botocore*/
+lambda/store-api/flask*/
+lambda/store-api/werkzeug*/
+lambda/store-api/pymysql*/
+lambda/store-api/flask_cors*/
+lambda/store-api/awsgi*/
+lambda/store-api/aws_wsgi*/
+lambda/store-api/blinker*/
+lambda/store-api/click*/
+lambda/store-api/itsdangerous*/
+lambda/store-api/jinja2*/
+lambda/store-api/markupsafe*/
+lambda/store-api/s3transfer*/
+lambda/store-api/jmespath*/
+lambda/store-api/dateutil*/
+lambda/store-api/mangum*/
+lambda/store-api/six.py
+lambda/store-api/typing_extensions.py
+lambda/store-api/urllib3*/
+lambda/store-api/bin/
+lambda/store-api/*.dist-info/
 .DS_Store
 cdk.out/
 .venv/
 venv/
+.cdk-outputs.json
+.mcp.json
+.claude/
+auth.json
+test-results/
+playwright-report/
+
+# Runtime config (contains live API URLs after deploy)
+web/static/config.js
+
+# E2E tests (contain deployment-specific URLs)
+tests/e2e/
+
+# Generated/temporary diagram scripts
+docs/generated-diagrams/
+docs/architecture.py
+scripts/gen-architecture-diagram.py
+
+# Non-repo artifacts (blog posts, internal docs)
+blog-post.*
+scripts/create-blog-docx.py
+~$*
+docs/.$*.bkp

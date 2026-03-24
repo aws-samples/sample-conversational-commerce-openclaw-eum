@@ -8,9 +8,8 @@
   },
   "scripts": {
     "build": "tsc --project tsconfig.json",
-    "build:watch": "tsc --project tsconfig.json --watch",
-    "lint": "eslint 'src/**/*.ts' --max-warnings 0",
-    "test": "jest --passWithNoTests"
+    "build:deploy": "bash build.sh",
+    "build:deploy-clean": "bash build.sh --clean"
   },
   "dependencies": {
     "axios": "^1.7.2"

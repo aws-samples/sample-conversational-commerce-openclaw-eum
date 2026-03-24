@@ -48,15 +48,22 @@ import * as sesActions from "aws-cdk-lib/aws-ses-actions";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as kms from "aws-cdk-lib/aws-kms";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
+import * as apigateway from "aws-cdk-lib/aws-apigateway";
+import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
+import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 
 // ---------------------------------------------------------------------------
 // Constants — update these before deploying to production
 // ---------------------------------------------------------------------------
-const DOMAIN = "clawboutique.example.com";
-const SUPPORT_EMAIL = "support@clawboutique.com";
+// Read domain config from environment or context; fall back to example values.
+const DOMAIN = process.env.SES_DOMAIN || "clawboutique.example.com";
+const SUPPORT_EMAIL = process.env.SES_SUPPORT_EMAIL || `support@${DOMAIN}`;
 // The Lightsail instance principal that may assume the OpenClaw role.
-// Replace with the actual Lightsail instance ARN or AWS account ID once known.
-const LIGHTSAIL_ACCOUNT_PRINCIPAL = ""; // e.g. "arn:aws:iam::123456789012:root"
+// Set LIGHTSAIL_PRINCIPAL to the Lightsail instance IAM ARN to scope down.
+// Falls back to the deploying account root (same-account assumption only).
+const LIGHTSAIL_ACCOUNT_PRINCIPAL = process.env.LIGHTSAIL_PRINCIPAL || "";
 
 export class ClawBoutiqueStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -243,27 +250,11 @@ export class ClawBoutiqueStack extends Stack {
     // -----------------------------------------------------------------------
     // Lambda code source selection
     //
-    // DEVELOPMENT / FIRST DEPLOY:
-    //   The inline placeholder below allows `cdk synth` and `cdk deploy` to
-    //   succeed before the dispatcher TypeScript has been compiled. The inline
-    //   handler does nothing but log the event and return success — safe to
-    //   deploy as a skeleton.
-    //
-    // PRODUCTION (after building the dispatcher):
-    //   1. cd ../lambda/dispatcher && npm install && npm run build
-    //   2. Comment out the `inlinePlaceholderCode` line.
-    //   3. Uncomment the `fromAsset` line below it.
-    //   4. Re-run: cdk deploy
+    // Uses the compiled dispatcher asset from ../lambda/dispatcher/dist.
+    // Build it first: cd ../lambda/dispatcher && npm install && npm run build
+    // The deploy.sh script handles this automatically.
     // -----------------------------------------------------------------------
-    const inlinePlaceholderCode = lambda.Code.fromInline(`
-exports.handler = async (event) => {
-  // Placeholder — replace with compiled asset from lambda/dispatcher/dist
-  console.log('ClawBoutiqueDispatcher placeholder invoked', JSON.stringify(event));
-  return { statusCode: 200, body: 'ok' };
-};`);
-
-    // Compiled asset code (uncomment after running: npm run build in lambda/dispatcher)
-    // const compiledAssetCode = lambda.Code.fromAsset("../lambda/dispatcher/dist");
+    const dispatcherCode = lambda.Code.fromAsset("../lambda/dispatcher/dist");
 
     const dispatcherFn = new lambda.Function(this, "ClawBoutiqueDispatcher", {
       functionName: "ClawBoutiqueDispatcher",
@@ -271,9 +262,7 @@ exports.handler = async (event) => {
         "Routes SNS-wrapped inbound events (WhatsApp via EUM Social, SES email) " +
         "to the OpenClaw gateway for processing and sends replies.",
       runtime: lambda.Runtime.NODEJS_20_X,
-      code: inlinePlaceholderCode,
-      // Switch to compiled asset once dispatcher is built:
-      // code: compiledAssetCode,
+      code: dispatcherCode,
       handler: "index.handler",
       role: dispatcherRole,
       timeout: Duration.seconds(30),
@@ -391,10 +380,13 @@ exports.handler = async (event) => {
     //    instance and attach an inline policy that allows only sts:AssumeRole
     //    on this role ARN. Store the access key in the instance environment.
     // =========================================================================
+    // Build the trust principal. If a specific Lightsail instance ARN is
+    // provided via LIGHTSAIL_PRINCIPAL, trust only that ARN. Otherwise trust
+    // the deploying account root (same-account only, no cross-account access).
     const lightsailPrincipal: iam.IPrincipal =
       LIGHTSAIL_ACCOUNT_PRINCIPAL.length > 0
         ? new iam.ArnPrincipal(LIGHTSAIL_ACCOUNT_PRINCIPAL)
-        : new iam.AccountRootPrincipal();
+        : new iam.AccountPrincipal(this.account);
 
     const lightsailRole = new iam.Role(this, "OpenClawLightsailRole", {
       roleName: "OpenClawLightsailRole",
@@ -424,7 +416,159 @@ exports.handler = async (event) => {
     // to a CMK, add a kms:Decrypt policy on that key and grant the role here.
 
     // =========================================================================
-    // 8. Stack Outputs
+    // 8. S3 Bucket + CloudFront — static website (storefront + admin dashboard)
+    // =========================================================================
+    const websiteBucket = new s3.Bucket(this, "ClawBoutiqueWebsite", {
+      bucketName: `claw-boutique-web-${this.account}`,
+      removalPolicy: RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+    });
+
+    const distribution = new cloudfront.Distribution(
+      this,
+      "ClawBoutiqueDistribution",
+      {
+        defaultBehavior: {
+          origin: origins.S3BucketOrigin.withOriginAccessControl(websiteBucket),
+          viewerProtocolPolicy:
+            cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        },
+        defaultRootObject: "index.html",
+        errorResponses: [
+          {
+            httpStatus: 403,
+            responseHttpStatus: 200,
+            responsePagePath: "/index.html",
+          },
+          {
+            httpStatus: 404,
+            responseHttpStatus: 200,
+            responsePagePath: "/index.html",
+          },
+        ],
+      }
+    );
+
+    // Deploy static files from web/static/ to S3, invalidate CloudFront cache
+    new s3deploy.BucketDeployment(this, "DeployWebsite", {
+      sources: [s3deploy.Source.asset("../web/static")],
+      destinationBucket: websiteBucket,
+      distribution,
+      distributionPaths: ["/*"],
+    });
+
+    // =========================================================================
+    // 9. Store API Lambda — Flask app via Mangum
+    //
+    //    Serves /api/* endpoints for products, orders, escalations, stats, etc.
+    //    Reads DB credentials from the Secrets Manager secret.
+    // =========================================================================
+    const storeApiLogGroup = new logs.LogGroup(this, "StoreApiLogGroup", {
+      logGroupName: "/aws/lambda/ClawBoutiqueStoreApi",
+      retention: logs.RetentionDays.THREE_MONTHS,
+      removalPolicy: RemovalPolicy.RETAIN,
+    });
+
+    const storeApiRole = new iam.Role(this, "StoreApiLambdaRole", {
+      roleName: "ClawBoutiqueStoreApiRole",
+      assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+      description: "Execution role for the Claw Boutique Store API Lambda.",
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "service-role/AWSLambdaBasicExecutionRole"
+        ),
+      ],
+    });
+
+    // Grant the Store API Lambda read access to DB credentials
+    storeApiRole.addToPolicy(
+      new iam.PolicyStatement({
+        sid: "ReadDbCredentials",
+        effect: iam.Effect.ALLOW,
+        actions: [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret",
+        ],
+        resources: [dbCredentialsSecret.secretArn],
+      })
+    );
+
+    const storeApiFn = new lambda.Function(this, "ClawBoutiqueStoreApi", {
+      functionName: "ClawBoutiqueStoreApi",
+      description:
+        "Store API — Flask via Mangum. Serves product catalog, orders, " +
+        "escalations, stats, and memory endpoints.",
+      runtime: lambda.Runtime.PYTHON_3_12,
+      code: lambda.Code.fromAsset("../lambda/store-api"),
+      handler: "handler.handler",
+      role: storeApiRole,
+      timeout: Duration.seconds(30),
+      memorySize: 512,
+      logGroup: storeApiLogGroup,
+      environment: {
+        DB_SECRET_ARN: dbCredentialsSecret.secretArn,
+      },
+    });
+
+    // =========================================================================
+    // 10. API Gateway — REST API with API key for OpenClaw auth
+    // =========================================================================
+    const storeApi = new apigateway.RestApi(this, "ClawBoutiqueApi", {
+      restApiName: "ClawBoutiqueStoreApi",
+      description: "Store API for Claw Boutique (products, orders, admin)",
+      deployOptions: {
+        stageName: "prod",
+        throttlingRateLimit: 50,
+        throttlingBurstLimit: 100,
+      },
+      defaultCorsPreflightOptions: {
+        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        allowMethods: apigateway.Cors.ALL_METHODS,
+        allowHeaders: [
+          "Content-Type",
+          "X-Amz-Date",
+          "Authorization",
+          "X-Api-Key",
+        ],
+      },
+    });
+
+    // Proxy all requests to the Store API Lambda
+    const lambdaIntegration = new apigateway.LambdaIntegration(storeApiFn);
+
+    // Root resource
+    storeApi.root.addMethod("ANY", lambdaIntegration);
+
+    // {proxy+} catch-all
+    storeApi.root
+      .addResource("{proxy+}")
+      .addMethod("ANY", lambdaIntegration, {
+        apiKeyRequired: false,
+      });
+
+    // API key for OpenClaw to authenticate
+    const openclawApiKey = storeApi.addApiKey("OpenClawApiKey", {
+      apiKeyName: "OpenClawStoreApiKey",
+      description: "API key used by OpenClaw tools to call the Store API",
+    });
+
+    const usagePlan = storeApi.addUsagePlan("OpenClawUsagePlan", {
+      name: "OpenClawUsagePlan",
+      description: "Usage plan for OpenClaw Store API access",
+      throttle: {
+        rateLimit: 50,
+        burstLimit: 100,
+      },
+    });
+
+    usagePlan.addApiKey(openclawApiKey);
+    usagePlan.addApiStage({
+      stage: storeApi.deploymentStage,
+    });
+
+    // =========================================================================
+    // 11. Stack Outputs
     // =========================================================================
 
     // SNS Topic ARN — paste this into the End User Messaging Social console
@@ -479,6 +623,30 @@ exports.handler = async (event) => {
       description:
         "Name of the SES receipt rule set. " +
         "Run: aws ses set-active-receipt-rule-set --rule-set-name ClawBoutiqueRuleSet",
+    });
+
+    // CloudFront website URL — buyer storefront and admin dashboard.
+    new CfnOutput(this, "WebsiteUrl", {
+      exportName: "ClawBoutiqueWebsiteUrl",
+      value: `https://${distribution.distributionDomainName}`,
+      description: "CloudFront URL for the storefront and admin dashboard.",
+    });
+
+    // Store API endpoint — used by OpenClaw tools and frontend JS.
+    new CfnOutput(this, "StoreApiUrl", {
+      exportName: "ClawBoutiqueStoreApiUrl",
+      value: storeApi.url,
+      description: "API Gateway URL for the Store API.",
+    });
+
+    // Store API key ID — retrieve the actual key value via:
+    //   aws apigateway get-api-key --api-key <id> --include-value
+    new CfnOutput(this, "StoreApiKeyId", {
+      exportName: "ClawBoutiqueStoreApiKeyId",
+      value: openclawApiKey.keyId,
+      description:
+        "API key ID for OpenClaw. Get the value: " +
+        "aws apigateway get-api-key --api-key <id> --include-value",
     });
   }
 }

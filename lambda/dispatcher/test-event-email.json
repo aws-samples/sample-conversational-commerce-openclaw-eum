@@ -1,0 +1,48 @@
+{
+  "_comment": [
+    "Sample SNS event for testing the Lambda dispatcher via the AWS Console Test tab.",
+    "Simulates an SES inbound email receipt notification.",
+    "",
+    "SES inbound email flow:",
+    "  Customer sends email to support@clawboutique.com",
+    "  -> SES receipt rule (ClawBoutiqueSupportInbound) triggers",
+    "  -> SES stores the raw email in S3 (claw-boutique-ses-inbox / emails/<messageId>)",
+    "  -> SES publishes a receipt notification to SNS (ClawBoutiqueInbound)",
+    "  -> SNS invokes the Lambda dispatcher",
+    "  -> Dispatcher calls POST /inbound/email on the OpenClaw gateway",
+    "",
+    "How to use:",
+    "  1. Open the Lambda function ClawBoutiqueDispatcher in the AWS Console.",
+    "  2. Click 'Test' -> 'Create new event'.",
+    "  3. Paste this entire JSON object as the test event body.",
+    "  4. Click 'Test' and inspect the CloudWatch log output.",
+    "",
+    "Notes:",
+    "  - The 'body' field in the gateway payload will be null here because 'content'",
+    "    is null in the SES notification (email was stored in S3, not inlined).",
+    "  - For emails under 150 KB, SES can include the raw MIME body inline;",
+    "    set 'content' to the base64-encoded raw email to test that path.",
+    "  - The s3 object reference (bucket + key) lets the OpenClaw gateway",
+    "    fetch the full email body from S3 when needed."
+  ],
+  "Records": [
+    {
+      "EventVersion": "1.0",
+      "EventSubscriptionArn": "arn:aws:sns:ap-southeast-1:123456789012:ClawBoutiqueInbound:sub-uuid-ses-001",
+      "EventSource": "aws:sns",
+      "Sns": {
+        "SignatureVersion": "1",
+        "Timestamp": "2024-06-01T12:05:00.000Z",
+        "Signature": "EXAMPLE-SIGNATURE==",
+        "SigningCertUrl": "https://sns.ap-southeast-1.amazonaws.com/SimpleNotificationService-cert.pem",
+        "MessageId": "sns-msg-uuid-ses-inbound-001",
+        "Message": "{\"notificationType\":\"Received\",\"mail\":{\"source\":\"maria.santos@gmail.com\",\"destination\":[\"support@clawboutique.com\"],\"messageId\":\"ses-msg-id-abc123def456\",\"commonHeaders\":{\"from\":[\"Maria Santos <maria.santos@gmail.com>\"],\"to\":[\"support@clawboutique.com\"],\"subject\":\"Question about my order #ORD-2024-0601\",\"date\":\"Sat, 01 Jun 2024 12:05:00 +0000\",\"messageId\":\"<ses-msg-id-abc123def456@mail.gmail.com>\"},\"headers\":[{\"name\":\"Return-Path\",\"value\":\"<maria.santos@gmail.com>\"},{\"name\":\"Received\",\"value\":\"from mail.gmail.com (mail.gmail.com [209.85.220.41]) by inbound-smtp.ap-southeast-1.amazonaws.com with SMTP id ses-msg-id-abc123def456\"},{\"name\":\"MIME-Version\",\"value\":\"1.0\"},{\"name\":\"Content-Type\",\"value\":\"text/plain; charset=UTF-8\"},{\"name\":\"Content-Transfer-Encoding\",\"value\":\"quoted-printable\"}],\"timestamp\":\"2024-06-01T12:05:00.000Z\"},\"receipt\":{\"timestamp\":\"2024-06-01T12:05:01.000Z\",\"processingTimeMillis\":234,\"recipients\":[\"support@clawboutique.com\"],\"spamVerdict\":{\"status\":\"PASS\"},\"virusVerdict\":{\"status\":\"PASS\"},\"spfVerdict\":{\"status\":\"PASS\"},\"dkimVerdict\":{\"status\":\"PASS\"},\"dmarcVerdict\":{\"status\":\"PASS\"},\"action\":{\"type\":\"SNS\",\"topicArn\":\"arn:aws:sns:ap-southeast-1:123456789012:ClawBoutiqueInbound\",\"bucketName\":\"claw-boutique-ses-inbox\",\"objectKey\":\"emails/ses-msg-id-abc123def456\",\"encoding\":\"UTF8\"}},\"content\":null}",
+        "Subject": "Amazon SES Email Receipt Notification",
+        "Type": "Notification",
+        "UnsubscribeUrl": "https://sns.ap-southeast-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:ap-southeast-1:123456789012:ClawBoutiqueInbound:sub-uuid-ses-001",
+        "TopicArn": "arn:aws:sns:ap-southeast-1:123456789012:ClawBoutiqueInbound",
+        "MessageAttributes": {}
+      }
+    }
+  ]
+}
