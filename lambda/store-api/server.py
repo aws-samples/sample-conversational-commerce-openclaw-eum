@@ -523,8 +523,23 @@ def create_order():
         logger.exception("create_order error")
         return _err(str(exc), 500)
 
-    # Fire-and-forget: check stock levels and alert admin if low
+    # Check stock levels and alert admin if low
     _check_stock_and_alert(product_ids)
+
+    # Demo mode: reset purchased products back to 5 so every order triggers
+    # a low-stock alert.  Runs after the alert so the email shows the real
+    # (low) count at the moment of purchase.
+    try:
+        with get_db() as conn:
+            with _cursor(conn) as cur:
+                fmt = ",".join(["%s"] * len(product_ids))
+                cur.execute(
+                    f"UPDATE products SET stock_qty = 5 WHERE id IN ({fmt})",
+                    product_ids,
+                )
+                conn.commit()
+    except Exception:
+        logger.exception("Demo stock reset failed (non-fatal)")
 
     # Fire-and-forget: send WhatsApp survey to customer
     if customer_phone:

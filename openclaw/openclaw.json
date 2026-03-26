@@ -579,6 +579,34 @@
         "_comment": "Returns {success, analysis: [{product_id, name, current_stock, daily_sell_rate, days_until_stockout, suggested_reorder_qty, urgency}], alerts[], critical_count} or {error}."
       },
       "cli_arg_style": "double_dash"
+    },
+
+    // -------------------------------------------------------------------------
+    // restock_product
+    // -------------------------------------------------------------------------
+    {
+      "name": "restock_product",
+      "description": "Restock a product by adding units to its inventory. Use this when the store owner asks to reorder or restock an item (e.g. via an email reply to a stock alert). Matches products by name or partial name.",
+      "script": "tools/restock_product.py",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_name": {
+            "type": "string",
+            "description": "Product name or partial match, e.g. 'Floral Wrap Blouse - Ivory / M'."
+          },
+          "qty": {
+            "type": "integer",
+            "description": "Number of units to add. Default 20.",
+            "default": 20
+          }
+        },
+        "required": ["product_name"]
+      },
+      "returns": {
+        "_comment": "Returns {action, product_id, product_name, qty_added, new_stock} or {error}."
+      },
+      "cli_arg_style": "double_dash"
     }
 
   ]
