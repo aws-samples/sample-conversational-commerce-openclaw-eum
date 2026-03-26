@@ -952,6 +952,56 @@ def resolve_escalation(escalation_id: int):
     ), 201
 
 
+@app.route("/api/escalations/<int:escalation_id>/send-apology", methods=["POST"])
+def send_apology_whatsapp(escalation_id: int):
+    """Send a WhatsApp apology + refund message and resolve the escalation."""
+    body = request.get_json(silent=True) or {}
+    phone = (body.get("phone") or "").strip()
+
+    try:
+        with get_db() as conn:
+            with _cursor(conn) as cur:
+                cur.execute(
+                    "SELECT id, customer_phone, reason, summary FROM escalations WHERE id = %s LIMIT 1",
+                    (escalation_id,),
+                )
+                esc = cur.fetchone()
+                if not esc:
+                    return _not_found("Escalation")
+
+                # Use phone from body or from escalation record
+                dest_phone = phone or (esc.get("customer_phone") or "")
+                if not dest_phone:
+                    return _err("No customer phone available for this escalation.")
+
+                message = (
+                    "Hi, this is Claw Boutique. We sincerely apologize for your recent experience. "
+                    "We've processed a full refund for your order. "
+                    "We value your feedback and are working to improve. "
+                    "Please don't hesitate to reach out if there's anything else we can help with."
+                )
+                _send_whatsapp(dest_phone, message)
+
+                # Resolve the escalation
+                cur.execute(
+                    """INSERT INTO admin_actions
+                        (escalation_id, action_type, resolution, created_at)
+                    VALUES (%s, %s, %s, %s)""",
+                    (escalation_id, "apology_refund", "Sent apology & refund via WhatsApp", datetime.utcnow()),
+                )
+                action_id = cur.lastrowid
+    except Exception as exc:
+        logger.exception("send_apology_whatsapp error")
+        return _err(str(exc), 500)
+
+    return jsonify({
+        "escalation_id": escalation_id,
+        "action_id": action_id,
+        "phone": dest_phone,
+        "message_sent": True,
+    }), 200
+
+
 # ---------------------------------------------------------------------------
 # Stats
 # ---------------------------------------------------------------------------
@@ -1193,14 +1243,15 @@ def create_review_from_whatsapp():
     if rating < 1 or rating > 5:
         return _err("Rating must be between 1 and 5")
 
-    # Look up most recent order for this phone
+    # Look up most recent order for this phone (join customers table)
     try:
         with get_db() as conn:
             with _cursor(conn) as cur:
                 cur.execute(
-                    """SELECT o.id, o.customer_name, o.customer_phone
+                    """SELECT o.id, c.name AS customer_name, c.phone AS customer_phone
                        FROM orders o
-                       WHERE o.customer_phone = %s
+                       JOIN customers c ON c.id = o.customer_id
+                       WHERE c.phone = %s
                        ORDER BY o.created_at DESC LIMIT 1""",
                     (phone,),
                 )

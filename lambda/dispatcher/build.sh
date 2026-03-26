@@ -67,6 +67,13 @@ rm -f "$ZIP_NAME"
 # Add production node_modules from the temp dir
 (cd "$PROD_MODULES_DIR" && zip -r "$SCRIPT_DIR/$ZIP_NAME" node_modules/)
 
+# Also create a _deploy/ directory for CDK (mirrors zip layout)
+DEPLOY_DIR="$SCRIPT_DIR/_deploy"
+rm -rf "$DEPLOY_DIR"
+mkdir -p "$DEPLOY_DIR"
+cp -r "$SCRIPT_DIR/dist/"* "$DEPLOY_DIR/"
+cp -r "$PROD_MODULES_DIR/node_modules" "$DEPLOY_DIR/"
+
 # Cleanup temp dir
 rm -rf "$PROD_MODULES_DIR"
 

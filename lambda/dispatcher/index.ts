@@ -409,7 +409,9 @@ async function handleWhatsAppRecord(record: SNSEventRecord): Promise<void> {
 
         // Route each message through Bedrock Agent and reply directly to customer
         for (const msg of value.messages) {
-          const senderPhone = msg.from ?? "";
+          // WhatsApp 'from' field omits the '+' prefix; normalise to E.164
+          const rawFrom = msg.from ?? "";
+          const senderPhone = rawFrom.startsWith("+") ? rawFrom : `+${rawFrom}`;
           const messageText =
             msg.text?.body ??
             msg.interactive?.button_reply?.title ??

@@ -25,15 +25,21 @@ function fmt_date(iso) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function parse_utc(iso) {
+  if (!iso) return null;
+  // Server returns timestamps without timezone suffix; treat as UTC
+  return new Date(iso.endsWith('Z') ? iso : iso + 'Z');
+}
+
 function fmt_datetime(iso) {
   if (!iso) return '—';
-  const d = new Date(iso);
+  const d = parse_utc(iso);
   return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
 function time_ago(iso) {
   if (!iso) return '';
-  const diff = Date.now() - new Date(iso).getTime();
+  const diff = Date.now() - parse_utc(iso).getTime();
   const m = Math.floor(diff / 60000);
   if (m < 1) return 'just now';
   if (m < 60) return m + 'm ago';
@@ -582,17 +588,9 @@ function render_escalations() {
           </div>
           ${is_open ? `
           <div class="flex flex-wrap gap-2 pt-1">
-            <button onclick="AdminApp.mock_action('whatsapp_apology', '${e.id}', '${e.customer_phone || ''}', this)" class="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-sm">
+            <button onclick="AdminApp.send_apology('${e.id}', '${e.customer_phone || ''}', this)" class="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-sm">
               <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.79 23.329l4.47-1.463A11.937 11.937 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818c-2.168 0-4.19-.587-5.932-1.61l-.424-.254-2.65.868.89-2.582-.278-.442A9.772 9.772 0 012.182 12c0-5.415 4.403-9.818 9.818-9.818S21.818 6.585 21.818 12 17.415 21.818 12 21.818z"/></svg>
-              Send Apology via WhatsApp
-            </button>
-            <button onclick="AdminApp.mock_action('refund', '${e.id}', '${e.customer_phone || ''}', this)" class="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors shadow-sm">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
-              Issue Refund
-            </button>
-            <button onclick="AdminApp.mock_action('discount', '${e.id}', '${e.customer_phone || ''}', this)" class="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors shadow-sm">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
-              Offer 20% Discount
+              Send Apology &amp; Refund via WhatsApp
             </button>
           </div>` : ''}
           ${e.resolution ? `
@@ -632,6 +630,33 @@ async function quick_resolve(escalation_id) {
       .catch(() => {});
   } catch (e) {
     show_toast('Failed to resolve escalation: ' + e.message, 'error');
+  }
+}
+
+async function send_apology(escalation_id, phone, btnEl) {
+  const btn = btnEl || (typeof event !== 'undefined' && event.currentTarget);
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="animate-spin inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full"></span> Sending...';
+  }
+  try {
+    await api_post(`/api/escalations/${escalation_id}/send-apology`, { phone });
+    if (btn) {
+      btn.innerHTML = '<svg class="w-3.5 h-3.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Done';
+      btn.classList.remove('bg-green-600', 'hover:bg-green-700');
+      btn.classList.add('bg-green-500');
+    }
+    show_toast('Apology & refund sent via WhatsApp', 'success');
+    load_escalations();
+    api_get('/api/escalations?resolved=false')
+      .then(data => update_escalation_badge(Array.isArray(data) ? data.length : 0))
+      .catch(() => {});
+  } catch (e) {
+    if (btn) {
+      btn.innerHTML = 'Failed – retry';
+      btn.disabled = false;
+    }
+    show_toast('Failed to send apology: ' + e.message, 'error');
   }
 }
 
@@ -1071,5 +1096,6 @@ window.AdminApp = {
   cancel_order,
   open_ship_modal,
   quick_resolve,
+  send_apology,
   mock_action,
 };

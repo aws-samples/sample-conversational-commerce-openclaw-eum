@@ -255,7 +255,7 @@ export class ClawBoutiqueStack extends Stack {
     // Build it first: cd ../lambda/dispatcher && npm install && npm run build
     // The deploy.sh script handles this automatically.
     // -----------------------------------------------------------------------
-    const dispatcherCode = lambda.Code.fromAsset("../lambda/dispatcher/dist");
+    const dispatcherCode = lambda.Code.fromAsset("../lambda/dispatcher/_deploy");
 
     const dispatcherFn = new lambda.Function(this, "ClawBoutiqueDispatcher", {
       functionName: "ClawBoutiqueDispatcher",

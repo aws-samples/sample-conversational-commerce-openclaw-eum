@@ -488,11 +488,15 @@ async function submitOrder(event) {
   };
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
     const res = await fetch(`${API_BASE}/api/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
     let data;
     try { data = await res.json(); } catch { data = {}; }
@@ -519,7 +523,10 @@ async function submitOrder(event) {
 
     showConfirmation();
   } catch (err) {
-    errorEl.textContent = err.message || 'Something went wrong. Please try again.';
+    const msg = err.name === 'AbortError'
+      ? 'Request timed out. Please try again.'
+      : (err.message || 'Something went wrong. Please try again.');
+    errorEl.textContent = msg;
     errorEl.classList.remove('hidden');
     btn.disabled = false;
     btn.textContent = 'Place Order';
