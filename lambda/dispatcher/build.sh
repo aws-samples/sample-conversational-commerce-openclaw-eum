@@ -61,18 +61,15 @@ npm install --prefix "$PROD_MODULES_DIR" --omit=dev --no-package-lock 2>/dev/nul
 echo "[build] Creating deployment ZIP: $ZIP_NAME"
 rm -f "$ZIP_NAME"
 
-# Add dist/ at the root of the ZIP
-(cd "$SCRIPT_DIR" && zip -r "$ZIP_NAME" dist/ -x "dist/*.map" "dist/*.d.ts" "dist/*.d.ts.map")
-
-# Add production node_modules from the temp dir
-(cd "$PROD_MODULES_DIR" && zip -r "$SCRIPT_DIR/$ZIP_NAME" node_modules/)
-
-# Also create a _deploy/ directory for CDK (mirrors zip layout)
+# Create a _deploy/ directory with index.js at root (required by Lambda handler "index.handler")
 DEPLOY_DIR="$SCRIPT_DIR/_deploy"
 rm -rf "$DEPLOY_DIR"
 mkdir -p "$DEPLOY_DIR"
 cp -r "$SCRIPT_DIR/dist/"* "$DEPLOY_DIR/"
 cp -r "$PROD_MODULES_DIR/node_modules" "$DEPLOY_DIR/"
+
+# Create ZIP from _deploy/ so index.js is at the root (not under dist/)
+(cd "$DEPLOY_DIR" && zip -r "$SCRIPT_DIR/$ZIP_NAME" . -x "*.map" "*.d.ts" "*.d.ts.map")
 
 # Cleanup temp dir
 rm -rf "$PROD_MODULES_DIR"
