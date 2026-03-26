@@ -556,10 +556,58 @@ async function handleSesEmailRecord(record: SNSEventRecord): Promise<void> {
     s3ObjectKey,
   });
 
-  // Forward all inbound email to OpenClaw for AI processing.
-  // OpenClaw reads the email, decides the intent, and uses its tools
-  // (restock_product, send_customer_reply, send_email, etc.) to act.
-  await postToGateway("/inbound/email", {
+  // ── Handle admin email replies to automated alerts ─────────────────────
+  // Detect replies to stock / review alerts and act via the Store API.
+  // Also forward to OpenClaw for logging (fire-and-forget, non-blocking).
+  const subjectLower = subject.toLowerCase();
+  const isReply = subjectLower.startsWith("re:");
+
+  if (isReply && STORE_API_URL) {
+    const bodyText = content ?? "";
+
+    // Stock Alert reply → restock the product
+    if (subjectLower.includes("stock alert")) {
+      const stockMatch = bodyText.match(/(?:LOW STOCK|OUT OF STOCK):\s*([^—–\n<]+)/i);
+      const productName = stockMatch ? stockMatch[1].trim() : "";
+      if (productName) {
+        log("INFO", "Admin email reply: restock request", { sender, productName });
+        try {
+          await axios.post(`${STORE_API_URL}/api/admin/email-action`, {
+            action: "restock",
+            product_name: productName,
+            qty: 20,
+          }, { timeout: 15_000 });
+          log("INFO", "Restock action completed", { productName });
+        } catch (err) {
+          log("ERROR", "Restock action failed", { error: (err as Error).message });
+        }
+      }
+    }
+
+    // Negative Review Alert reply → send WhatsApp apology & refund
+    if (subjectLower.includes("review alert")) {
+      const phoneMatch = bodyText.match(/(\+\d{8,15})/);
+      const nameMatch = bodyText.match(/Customer[:\s]*\s*([^(<\n]+?)[\s]*\(/i);
+      const customerPhone = phoneMatch ? phoneMatch[1] : "";
+      const customerName = nameMatch ? nameMatch[1].trim() : "";
+      if (customerPhone) {
+        log("INFO", "Admin email reply: send apology", { sender, customerPhone, customerName });
+        try {
+          await axios.post(`${STORE_API_URL}/api/admin/email-action`, {
+            action: "send_apology",
+            customer_phone: customerPhone,
+            customer_name: customerName,
+          }, { timeout: 15_000 });
+          log("INFO", "Apology action completed", { customerPhone });
+        } catch (err) {
+          log("ERROR", "Apology action failed", { error: (err as Error).message });
+        }
+      }
+    }
+  }
+
+  // Forward to OpenClaw for AI logging (fire-and-forget — don't fail if unreachable)
+  postToGateway("/inbound/email", {
     source: "email",
     messageId: mail.messageId,
     sender,
@@ -567,14 +615,13 @@ async function handleSesEmailRecord(record: SNSEventRecord): Promise<void> {
     subject,
     date: mail.commonHeaders?.date,
     headers: mail.headers,
-    // Inline content is only present when the SES rule is configured to
-    // include the raw email body in the notification (< 150 KB limit).
-    // For larger emails, the gateway should fetch the object from S3.
     body: content ?? null,
     s3: s3BucketName && s3ObjectKey
       ? { bucket: s3BucketName, key: s3ObjectKey }
       : null,
     rawMail: mail,
+  }).catch((err: Error) => {
+    log("WARN", "OpenClaw email forward failed (non-fatal)", { error: err.message });
   });
 }
 
