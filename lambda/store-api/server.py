@@ -1003,6 +1003,136 @@ def send_apology_whatsapp(escalation_id: int):
 
 
 # ---------------------------------------------------------------------------
+# Admin email reply actions
+# ---------------------------------------------------------------------------
+
+@app.route("/api/admin/email-action", methods=["POST"])
+def admin_email_action():
+    """Process an admin email reply to a stock alert or negative review alert.
+
+    The dispatcher calls this endpoint when it detects an admin reply to one of
+    the automated alert emails.  The request body contains:
+      - action: "restock" | "send_apology"
+      - For restock: product_name, qty (optional, default 20)
+      - For send_apology: customer_phone, customer_name (optional)
+    """
+    data = request.get_json(silent=True) or {}
+    action = (data.get("action") or "").strip()
+
+    if action == "restock":
+        product_name = (data.get("product_name") or "").strip()
+        qty = int(data.get("qty", 20))
+        if not product_name:
+            return _err("product_name is required for restock action")
+        try:
+            with get_db() as conn:
+                with _cursor(conn) as cur:
+                    # Fuzzy match: find product whose name contains the search term
+                    cur.execute(
+                        "SELECT id, name, stock_qty FROM products WHERE name LIKE %s LIMIT 1",
+                        (f"%{product_name}%",),
+                    )
+                    product = cur.fetchone()
+                    if not product:
+                        return _err(f"No product found matching '{product_name}'", 404)
+
+                    new_stock = int(product["stock_qty"]) + qty
+                    cur.execute(
+                        "UPDATE products SET stock_qty = %s WHERE id = %s",
+                        (new_stock, product["id"]),
+                    )
+                    conn.commit()
+        except Exception as exc:
+            logger.exception("admin restock error")
+            return _err(str(exc), 500)
+
+        # Send confirmation email
+        subject = f"[Claw Boutique] Restock Confirmed: {product['name']}"
+        html = f"""<html><body style="font-family:sans-serif;color:#333;max-width:600px;margin:auto;padding:20px">
+<h2 style="color:#38a169">Claw Boutique — Restock Confirmed</h2>
+<p>Your restock request has been processed:</p>
+<div style="background:#e8f5e9;border:1px solid #38a169;border-radius:8px;padding:12px;margin:8px 0">
+<strong>{product['name']}</strong> — added {qty} units (new total: {new_stock})
+</div>
+<p style="margin-top:20px;color:#888;font-size:12px">Automated confirmation from Claw Boutique AI</p>
+</body></html>"""
+        text = f"Restock Confirmed: {product['name']} — added {qty} units (new total: {new_stock})"
+        _send_admin_email(subject, html, text)
+
+        return jsonify({
+            "action": "restock",
+            "product_id": product["id"],
+            "product_name": product["name"],
+            "qty_added": qty,
+            "new_stock": new_stock,
+        })
+
+    elif action == "send_apology":
+        phone = (data.get("customer_phone") or "").strip()
+        customer_name = (data.get("customer_name") or "").strip()
+        if not phone:
+            return _err("customer_phone is required for send_apology action")
+
+        message = (
+            "Hi" + (f" {customer_name}" if customer_name else "") + ", this is Claw Boutique. "
+            "We sincerely apologize for your recent experience. "
+            "We've processed a full refund for your order. "
+            "We value your feedback and are working to improve. "
+            "Please don't hesitate to reach out if there's anything else we can help with."
+        )
+        _send_whatsapp(phone, message)
+
+        # Resolve any open escalation for this customer
+        resolved_id = None
+        try:
+            with get_db() as conn:
+                with _cursor(conn) as cur:
+                    cur.execute(
+                        """SELECT e.id FROM escalations e
+                           LEFT JOIN admin_actions a ON a.escalation_id = e.id
+                           WHERE e.customer_phone = %s AND a.id IS NULL
+                           ORDER BY e.created_at DESC LIMIT 1""",
+                        (phone,),
+                    )
+                    esc = cur.fetchone()
+                    if esc:
+                        cur.execute(
+                            """INSERT INTO admin_actions
+                                (escalation_id, action_type, resolution, created_at)
+                            VALUES (%s, %s, %s, %s)""",
+                            (esc["id"], "apology_refund", "Admin replied to alert email: sent apology & refund via WhatsApp", datetime.utcnow()),
+                        )
+                        resolved_id = esc["id"]
+        except Exception:
+            logger.exception("Failed to resolve escalation for %s", phone)
+
+        # Send confirmation email
+        display = f"{customer_name} ({phone})" if customer_name else phone
+        subject = f"[Claw Boutique] Apology & Refund Sent to {display}"
+        html = f"""<html><body style="font-family:sans-serif;color:#333;max-width:600px;margin:auto;padding:20px">
+<h2 style="color:#38a169">Claw Boutique — Action Confirmed</h2>
+<p>Your request has been processed:</p>
+<div style="background:#e8f5e9;border:1px solid #38a169;border-radius:8px;padding:12px;margin:8px 0">
+<strong>Apology &amp; refund sent via WhatsApp</strong> to {display}
+</div>
+{f'<p>Escalation #{resolved_id} has been marked as resolved.</p>' if resolved_id else ''}
+<p style="margin-top:20px;color:#888;font-size:12px">Automated confirmation from Claw Boutique AI</p>
+</body></html>"""
+        text = f"Apology & refund sent via WhatsApp to {display}" + (f". Escalation #{resolved_id} resolved." if resolved_id else "")
+        _send_admin_email(subject, html, text)
+
+        return jsonify({
+            "action": "send_apology",
+            "phone": phone,
+            "whatsapp_sent": True,
+            "escalation_resolved": resolved_id,
+        })
+
+    else:
+        return _err(f"Unknown action: '{action}'. Expected 'restock' or 'send_apology'.")
+
+
+# ---------------------------------------------------------------------------
 # Stats
 # ---------------------------------------------------------------------------
 

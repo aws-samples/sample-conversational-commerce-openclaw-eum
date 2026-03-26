@@ -556,6 +556,76 @@ async function handleSesEmailRecord(record: SNSEventRecord): Promise<void> {
     s3ObjectKey,
   });
 
+  // ── Admin email reply handling ───────────────────────────────────────────
+  // Detect replies to automated alert emails and take action via Store API.
+  const subjectLower = subject.toLowerCase();
+  const isReply = subjectLower.startsWith("re:");
+
+  if (isReply && STORE_API_URL) {
+    // Stock Alert reply → restock the product
+    if (subjectLower.includes("stock alert")) {
+      // Extract product name from the original subject or email body.
+      // Subject format: "Re: [Claw Boutique] Stock Alert: 1 item(s) need attention"
+      // Body contains: "LOW STOCK: Floral Wrap Blouse - Ivory / M — only 3 units remaining"
+      const bodyText = content ?? "";
+      const stockMatch = bodyText.match(/(?:LOW STOCK|OUT OF STOCK):\s*([^—–\n]+)/i);
+      const productName = stockMatch ? stockMatch[1].trim() : "";
+
+      if (productName) {
+        log("INFO", "Admin email reply: restock request", { sender, productName });
+        try {
+          await axios.post(`${STORE_API_URL}/api/admin/email-action`, {
+            action: "restock",
+            product_name: productName,
+            qty: 20,
+          }, { timeout: 15_000 });
+          log("INFO", "Restock action completed via Store API", { productName });
+        } catch (err) {
+          const axiosErr = err as AxiosError;
+          log("ERROR", "Restock action failed", {
+            productName,
+            status: axiosErr.response?.status,
+            error: axiosErr.message,
+          });
+        }
+        return; // handled — don't forward to OpenClaw
+      }
+    }
+
+    // Negative Review Alert reply → send apology & refund via WhatsApp
+    if (subjectLower.includes("negative review alert") || subjectLower.includes("review alert")) {
+      // Extract customer phone and name from the email body.
+      // Body contains: "Customer: Demo Tester (+6597209504)" or
+      //   HTML: <td>Demo Tester (+6597209504)</td>
+      const bodyText = content ?? "";
+      const phoneMatch = bodyText.match(/(\+\d{8,15})/);
+      const nameMatch = bodyText.match(/Customer[:\s]*\s*([^(<\n]+?)[\s]*\(/i);
+      const customerPhone = phoneMatch ? phoneMatch[1] : "";
+      const customerName = nameMatch ? nameMatch[1].trim() : "";
+
+      if (customerPhone) {
+        log("INFO", "Admin email reply: send apology", { sender, customerPhone, customerName });
+        try {
+          await axios.post(`${STORE_API_URL}/api/admin/email-action`, {
+            action: "send_apology",
+            customer_phone: customerPhone,
+            customer_name: customerName,
+          }, { timeout: 15_000 });
+          log("INFO", "Send apology action completed via Store API", { customerPhone });
+        } catch (err) {
+          const axiosErr = err as AxiosError;
+          log("ERROR", "Send apology action failed", {
+            customerPhone,
+            status: axiosErr.response?.status,
+            error: axiosErr.message,
+          });
+        }
+        return; // handled — don't forward to OpenClaw
+      }
+    }
+  }
+
+  // ── Default: forward to OpenClaw ─────────────────────────────────────────
   await postToGateway("/inbound/email", {
     source: "email",
     messageId: mail.messageId,
