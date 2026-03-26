@@ -1,6 +1,8 @@
 # Claw Boutique
 
-AI-powered WhatsApp e-commerce bot built on AWS. Customers text a WhatsApp number to browse products, place orders, and get support. An AI agent (OpenClaw + Claude on Amazon Bedrock) handles conversations automatically. The store owner gets alerts via email and manages everything from an admin dashboard.
+AI-powered WhatsApp e-commerce bot built on AWS. Customers text a WhatsApp number to browse products, place orders, and get support. A Bedrock Agent (Nova Lite) handles conversations in real time. OpenClaw runs separately on Lightsail as the intelligence layer: it processes admin email replies, compacts interaction history, builds customer memory, and generates daily AI insights using Claude on Bedrock.
+
+**[See the demo guide](docs/demo-guide.md)** for a step-by-step walkthrough with screenshots.
 
 ---
 
@@ -8,15 +10,22 @@ AI-powered WhatsApp e-commerce bot built on AWS. Customers text a WhatsApp numbe
 
 ![Architecture](docs/architecture.drawio.png)
 
+**Customer-facing (fast, cheap):**
+
 1. Customer sends a WhatsApp message to the business number
-2. AWS End User Messaging Social (EUM Social) receives it and publishes to SNS
-3. A Lambda dispatcher parses the payload and forwards it to the OpenClaw agent on Lightsail
-4. OpenClaw uses Claude on Bedrock to call tools (browse catalog, create order, check stock) against the Store API
+2. EUM Social receives it and publishes to SNS
+3. A Lambda dispatcher parses the payload and invokes a Bedrock Agent (Nova Lite)
+4. The agent calls tools (browse catalog, create order, check stock) against the Store API
 5. The reply goes back to the customer via EUM Social
+6. A copy of every message exchange is sent async to OpenClaw for memory and insights
 
-SES handles two-way email with the store owner. Outbound: OpenClaw sends stock alerts and escalation emails. Inbound: the admin replies (e.g., "restock from supplier"), SES routes the reply back through SNS, and OpenClaw acts on it.
+**Admin intelligence layer (strategic):**
 
-The web storefront works in parallel: CloudFront serves the static site from S3, and the frontend calls the same Store API through API Gateway.
+OpenClaw on Lightsail handles the store owner's side. SES sends stock alerts and escalation emails. When the admin replies (e.g., "restock from supplier"), SES routes the reply through SNS to OpenClaw, which acts on the instructions using Claude on Bedrock. OpenClaw also compacts interaction history, builds customer memory, and generates the AI Insights dashboard.
+
+**Web storefront:**
+
+CloudFront serves the static site from S3, and the frontend calls the same Store API through API Gateway.
 
 ### Services used
 
@@ -25,8 +34,9 @@ The web storefront works in parallel: CloudFront serves the static site from S3,
 | EUM Social | Managed WhatsApp Business integration |
 | SNS | Event bus for WhatsApp and SES inbound events |
 | Lambda (x2) | Dispatcher (routes messages) + Store API (Flask) |
-| Lightsail | Hosts OpenClaw agent |
-| Bedrock | Claude for AI reasoning |
+| Bedrock Agents | Nova Lite for real-time customer WhatsApp conversations |
+| Lightsail | Hosts OpenClaw (admin intelligence, memory, insights) |
+| Bedrock | Claude for OpenClaw reasoning and AI Insights generation |
 | API Gateway | REST API for the Store API Lambda |
 | MySQL | Products, customers, orders, reviews, carts |
 | SES | Admin alert emails + inbound email routing |
@@ -36,9 +46,11 @@ The web storefront works in parallel: CloudFront serves the static site from S3,
 
 ### Why these choices
 
-**EUM Social for WhatsApp.** No public endpoints to manage. AWS handles the Meta webhook integration and routes events through SNS with IAM security. The Lightsail OpenClaw blueprint includes EUM Social support out of the box.
+**Bedrock Agent for customer WhatsApp.** The customer-facing chatbot handles structured tasks: catalog search, order placement, surveys. Nova Lite is fast and cheap for high-volume tool-calling. No persistent state needed.
 
-**Lightsail for the AI agent.** OpenClaw needs a persistent process for conversation state. Lambda handles the stateless routing, Lightsail handles the stateful agent.
+**OpenClaw for the intelligence layer.** OpenClaw is an agentic orchestrator, not a chatbot. It handles admin email replies that require judgment, compacts interaction history into customer memory, and generates daily AI Insights. Lightsail gives it the persistent process it needs for long-running analysis.
+
+**Two models, two jobs.** Nova Lite handles the commodity real-time work. Claude (via OpenClaw) handles strategic decisions where reasoning quality matters. This keeps costs low for customer traffic while preserving quality for admin actions.
 
 **SES for admin notifications.** Email gives the store owner a formal record. SES receipt rules route replies back into the system, so the admin never has to leave their inbox.
 
@@ -50,7 +62,7 @@ The web storefront works in parallel: CloudFront serves the static site from S3,
 
 ### Order via WhatsApp
 
-Customers browse the catalog, ask questions, and place orders through natural conversation. The AI agent handles the full flow: product search, detail collection, order creation, and confirmation.
+Customers browse the catalog, ask questions, and place orders through natural conversation. A Bedrock Agent (Nova Lite) handles the full flow: product search, detail collection, order creation, and confirmation.
 
 <img src="docs/mockup-wa-order.png" width="380" alt="WhatsApp order conversation">
 
@@ -74,7 +86,7 @@ Every purchase triggers a background stock analysis. The system calculates daily
 
 ### Review escalation
 
-Negative reviews trigger an escalation email with the customer's details, rating, and review text. The admin can reply directly to the email with instructions (e.g., "offer 20% discount"), and ClawBot follows up with the customer on WhatsApp.
+Negative reviews trigger an escalation email with the customer's details, rating, and review text. The admin can reply directly to the email with instructions (e.g., "offer 20% discount"). OpenClaw processes the reply and follows up with the customer on WhatsApp.
 
 <img src="docs/mockup-email-escalation.png" width="580" alt="Review escalation email">
 
@@ -96,7 +108,9 @@ Static site on CloudFront with product browsing, cart, and checkout. Auto-fills 
 
 ## Running the demo
 
-See `scripts/demo-script.md` for a step-by-step walkthrough of every feature.
+**[Demo Guide with screenshots and mocked messages](docs/demo-guide.md)** - step-by-step walkthrough of every feature with inline screenshots of the storefront, admin dashboard, WhatsApp messages, and email alerts.
+
+For a technical walkthrough with timing notes and troubleshooting, see `scripts/demo-script.md`.
 
 ---
 
@@ -128,7 +142,7 @@ claw-boutique/
 
 ## Deployment
 
-CDK deploys all AWS resources (SNS, Lambda, SES, S3, CloudFront, API Gateway, Secrets Manager, KMS) in one command. A few manual steps connect WhatsApp and the Lightsail agent.
+CDK deploys all AWS resources (SNS, Lambda, SES, S3, CloudFront, API Gateway, Bedrock Agent, Secrets Manager, KMS) in one command. A few manual steps connect WhatsApp and the Lightsail agent.
 
 ```bash
 git clone <this-repo>

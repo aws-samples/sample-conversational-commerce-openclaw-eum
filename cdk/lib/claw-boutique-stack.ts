@@ -53,6 +53,7 @@ import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
+import * as bedrock from "aws-cdk-lib/aws-bedrock";
 
 // ---------------------------------------------------------------------------
 // Constants — update these before deploying to production
@@ -567,8 +568,219 @@ export class ClawBoutiqueStack extends Stack {
       stage: storeApi.deploymentStage,
     });
 
+    // Give the dispatcher the Store API URL (declared after storeApi is created)
+    dispatcherFn.addEnvironment("STORE_API_URL", storeApi.url);
+
     // =========================================================================
-    // 11. Stack Outputs
+    // 11. Bedrock Agent resources
+    // =========================================================================
+
+    // --- 11a. Action Group Lambda -------------------------------------------
+    const agentActionGroupLogGroup = new logs.LogGroup(
+      this,
+      "AgentActionGroupLogGroup",
+      {
+        logGroupName: "/aws/lambda/ClawBoutiqueAgentActionGroup",
+        retention: logs.RetentionDays.THREE_MONTHS,
+        removalPolicy: RemovalPolicy.RETAIN,
+      }
+    );
+
+    const agentActionGroupRole = new iam.Role(
+      this,
+      "AgentActionGroupLambdaRole",
+      {
+        roleName: "ClawBoutiqueAgentActionGroupRole",
+        assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+        description:
+          "Execution role for the Bedrock Agent action group Lambda. " +
+          "Calls the Store API over HTTPS.",
+        managedPolicies: [
+          iam.ManagedPolicy.fromAwsManagedPolicyName(
+            "service-role/AWSLambdaBasicExecutionRole"
+          ),
+        ],
+      }
+    );
+
+    const actionGroupLambda = new lambda.Function(
+      this,
+      "ClawBoutiqueAgentActionGroup",
+      {
+        functionName: "ClawBoutiqueAgentActionGroup",
+        description:
+          "Handles Bedrock Agent tool calls (list_products, get_product, " +
+          "get_order, create_escalation) by calling the Store API.",
+        runtime: lambda.Runtime.PYTHON_3_12,
+        code: lambda.Code.fromAsset("../lambda/agent-action-group"),
+        handler: "handler.lambda_handler",
+        role: agentActionGroupRole,
+        timeout: Duration.seconds(30),
+        memorySize: 256,
+        logGroup: agentActionGroupLogGroup,
+        environment: {
+          STORE_API_URL: storeApi.url,
+        },
+      }
+    );
+
+    // Allow Bedrock to invoke the action group Lambda.
+    actionGroupLambda.addPermission("BedrockAgentInvoke", {
+      principal: new iam.ServicePrincipal("bedrock.amazonaws.com"),
+      action: "lambda:InvokeFunction",
+    });
+
+    // --- 11b. Bedrock Agent IAM role ----------------------------------------
+    const bedrockAgentRole = new iam.Role(this, "BedrockAgentRole", {
+      roleName: "ClawBoutiqueBedrockAgentRole",
+      assumedBy: new iam.ServicePrincipal("bedrock.amazonaws.com"),
+      description:
+        "Role assumed by the Bedrock Agent to invoke the Nova Lite foundation model.",
+    });
+
+    bedrockAgentRole.addToPolicy(
+      new iam.PolicyStatement({
+        sid: "InvokeNovaLite",
+        effect: iam.Effect.ALLOW,
+        actions: ["bedrock:InvokeModel"],
+        resources: [
+          "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-lite-v1:0",
+        ],
+      })
+    );
+
+    // --- 11c. Bedrock Agent -------------------------------------------------
+    const bedrockAgent = new bedrock.CfnAgent(this, "ClawBoutiqueAgent", {
+      agentName: "ClawBoutiqueAgent",
+      foundationModel: "amazon.nova-lite-v1:0",
+      agentResourceRoleArn: bedrockAgentRole.roleArn,
+      idleSessionTtlInSeconds: 1800,
+      instruction:
+        "You are a shopping assistant for Claw Boutique, a women's fashion store. " +
+        "Help customers browse products, check order status, and escalate issues. " +
+        "Keep replies short and conversational — this is WhatsApp chat, not email. " +
+        "Use plain text only, no markdown, no bullet points with asterisks. " +
+        "When a customer asks about products, call list_products with relevant filters. " +
+        "You CANNOT place orders. When a customer wants to buy something, give them the storefront link: https://d22y1hcx8ni0pf.cloudfront.net " +
+        "and tell them to complete their purchase there. " +
+        "When a customer reports a problem, use create_escalation to log it so the owner is notified. " +
+        "Be friendly but brief. Never make up product details — always call a tool to get real data.",
+      actionGroups: [
+        {
+          actionGroupName: "StoreActions",
+          actionGroupExecutor: {
+            lambda: actionGroupLambda.functionArn,
+          },
+          functionSchema: {
+            functions: [
+              {
+                name: "list_products",
+                description:
+                  "Search the product catalog. Returns matching products with name, price, stock, sizes, and colors.",
+                parameters: {
+                  category: {
+                    type: "string",
+                    description:
+                      "Product category filter (e.g., tops, dresses, accessories)",
+                    required: false,
+                  },
+                  size: {
+                    type: "string",
+                    description: "Size filter (e.g., XS, S, M, L, XL)",
+                    required: false,
+                  },
+                  color: {
+                    type: "string",
+                    description: "Color filter",
+                    required: false,
+                  },
+                },
+              },
+              {
+                name: "get_product",
+                description:
+                  "Get full details for a single product by its ID, including price, stock level, available sizes, and colors.",
+                parameters: {
+                  product_id: {
+                    type: "integer",
+                    description: "Numeric product ID",
+                    required: true,
+                  },
+                },
+              },
+              {
+                name: "get_order",
+                description:
+                  "Look up an order by order ID. Returns order status, items, and total.",
+                parameters: {
+                  order_id: {
+                    type: "integer",
+                    description: "Numeric order ID",
+                    required: true,
+                  },
+                },
+              },
+              {
+                name: "create_escalation",
+                description:
+                  "Log a customer issue or complaint so the store owner is notified. Use this when a customer has a problem that needs human follow-up.",
+                parameters: {
+                  customer_phone: {
+                    type: "string",
+                    description: "Customer WhatsApp phone number in E.164 format",
+                    required: true,
+                  },
+                  issue: {
+                    type: "string",
+                    description:
+                      "Short description of the issue or complaint",
+                    required: true,
+                  },
+                  order_id: {
+                    type: "integer",
+                    description:
+                      "Order ID related to the issue, if applicable",
+                    required: false,
+                  },
+                },
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    // --- 11d. Bedrock Agent Alias -------------------------------------------
+    const bedrockAgentAlias = new bedrock.CfnAgentAlias(
+      this,
+      "ClawBoutiqueAgentAlias",
+      {
+        agentId: bedrockAgent.attrAgentId,
+        agentAliasName: "live",
+      }
+    );
+
+    // --- 11e. Update dispatcher Lambda env vars and IAM ---------------------
+    dispatcherFn.addEnvironment(
+      "BEDROCK_AGENT_ID",
+      bedrockAgent.attrAgentId
+    );
+    dispatcherFn.addEnvironment(
+      "BEDROCK_AGENT_ALIAS_ID",
+      bedrockAgentAlias.attrAgentAliasId
+    );
+
+    dispatcherRole.addToPolicy(
+      new iam.PolicyStatement({
+        sid: "BedrockInvokeAgent",
+        effect: iam.Effect.ALLOW,
+        actions: ["bedrock:InvokeAgent"],
+        resources: ["arn:aws:bedrock:us-east-1:*:agent-alias/*/*"],
+      })
+    );
+
+    // =========================================================================
+    // 12. Stack Outputs
     // =========================================================================
 
     // SNS Topic ARN — paste this into the End User Messaging Social console
@@ -647,6 +859,20 @@ export class ClawBoutiqueStack extends Stack {
       description:
         "API key ID for OpenClaw. Get the value: " +
         "aws apigateway get-api-key --api-key <id> --include-value",
+    });
+
+    // Bedrock Agent ID — used by the dispatcher to invoke the agent.
+    new CfnOutput(this, "BedrockAgentId", {
+      exportName: "ClawBoutiqueBedrockAgentId",
+      value: bedrockAgent.attrAgentId,
+      description: "ID of the Bedrock Agent (ClawBoutiqueAgent).",
+    });
+
+    // Bedrock Agent Alias ID — the 'live' alias used by the dispatcher.
+    new CfnOutput(this, "BedrockAgentAliasId", {
+      exportName: "ClawBoutiqueBedrockAgentAliasId",
+      value: bedrockAgentAlias.attrAgentAliasId,
+      description: "ID of the 'live' alias for the Bedrock Agent.",
     });
   }
 }

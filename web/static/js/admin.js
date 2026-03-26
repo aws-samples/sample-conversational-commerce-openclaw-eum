@@ -565,7 +565,7 @@ function render_escalations() {
           </div>
           <div class="flex items-center gap-2">
             ${status_badge(display_status)}
-            ${is_open ? `<button onclick="AdminApp.open_resolve_modal('${e.id}')" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-sm">
+            ${is_open ? `<button onclick="AdminApp.quick_resolve('${e.id}')" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-sm">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
               Resolve
             </button>` : ''}
@@ -580,6 +580,21 @@ function render_escalations() {
             <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Summary</span>
             <p class="text-sm text-slate-700 mt-0.5 leading-relaxed">${e.summary || '—'}</p>
           </div>
+          ${is_open ? `
+          <div class="flex flex-wrap gap-2 pt-1">
+            <button onclick="AdminApp.mock_action('whatsapp_apology', '${e.id}', '${e.customer_phone || ''}', this)" class="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-sm">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.79 23.329l4.47-1.463A11.937 11.937 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818c-2.168 0-4.19-.587-5.932-1.61l-.424-.254-2.65.868.89-2.582-.278-.442A9.772 9.772 0 012.182 12c0-5.415 4.403-9.818 9.818-9.818S21.818 6.585 21.818 12 17.415 21.818 12 21.818z"/></svg>
+              Send Apology via WhatsApp
+            </button>
+            <button onclick="AdminApp.mock_action('refund', '${e.id}', '${e.customer_phone || ''}', this)" class="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors shadow-sm">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+              Issue Refund
+            </button>
+            <button onclick="AdminApp.mock_action('discount', '${e.id}', '${e.customer_phone || ''}', this)" class="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors shadow-sm">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+              Offer 20% Discount
+            </button>
+          </div>` : ''}
           ${e.resolution ? `
           <div class="p-3 bg-green-50 rounded-lg border border-green-200">
             <span class="text-xs font-semibold text-green-700 uppercase tracking-wide">Resolution</span>
@@ -607,38 +622,11 @@ function render_escalations() {
   list.innerHTML = html;
 }
 
-function open_resolve_modal(escalation_id) {
-  _pending_resolve_id = escalation_id;
-  const e = _all_escalations.find(x => String(x.id) === String(escalation_id));
-  if (e) {
-    el('resolve-modal-context').innerHTML = `
-      <div class="text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide">Escalation Context</div>
-      <div class="text-sm font-medium text-slate-800">${e.customer_phone}</div>
-      <div class="text-xs text-red-600 font-medium mt-1">${e.reason}</div>
-      <div class="text-xs text-slate-600 mt-1 leading-relaxed">${e.summary}</div>
-    `;
-  }
-  el('resolve-notes').value = '';
-  el('resolve-action').value = 'resolved_via_chat';
-  el('resolve-modal').classList.remove('hidden');
-}
-
-function close_resolve_modal() {
-  el('resolve-modal').classList.add('hidden');
-  _pending_resolve_id = null;
-}
-
-async function confirm_resolve() {
-  if (!_pending_resolve_id) return;
-  const action_taken = el('resolve-action').value;
-  const resolution = el('resolve-notes').value.trim();
-
+async function quick_resolve(escalation_id) {
   try {
-    await api_post(`/api/escalations/${_pending_resolve_id}/resolve`, { action_taken, resolution });
-    show_toast('Escalation resolved successfully', 'success');
-    close_resolve_modal();
+    await api_post(`/api/escalations/${escalation_id}/resolve`, { action_taken: 'resolved', resolution: 'Marked resolved by admin' });
+    show_toast('Escalation resolved', 'success');
     load_escalations();
-    // Refresh dashboard badge
     api_get('/api/escalations?resolved=false')
       .then(data => update_escalation_badge(Array.isArray(data) ? data.length : 0))
       .catch(() => {});
@@ -678,6 +666,7 @@ async function load_products() {
             <div class="flex items-center gap-2">
               <span class="text-sm font-medium ${p.stock_qty === 0 ? 'text-red-600' : low ? 'text-amber-600' : 'text-slate-700'}">${p.stock_qty}</span>
               ${p.stock_qty === 0 ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-700">Out</span>' : low ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700">Low</span>' : ''}
+              ${p.stock_qty < 5 ? `<button onclick="AdminApp.mock_action('restock_product', '${p.id}', '${(p.name || '').replace(/'/g, '')}', this)" class="ml-1 px-2 py-0.5 text-xs font-semibold bg-slate-700 hover:bg-slate-800 text-white rounded transition-colors">Restock</button>` : ''}
             </div>
           </td>
         </tr>
@@ -820,12 +809,16 @@ async function load_insights() {
     if (lowStockItems.length > 0) {
       const outOfStock = lowStockItems.filter(i => i.urgency === 'out_of_stock');
       const critical = lowStockItems.filter(i => i.urgency === 'critical');
+      const restockNames = lowStockItems.slice(0, 3).map(i => i.name).join(', ');
       insights.push({
         icon: '📦',
         title: `Stock Alert: ${lowStockItems.length} Item${lowStockItems.length > 1 ? 's' : ''} Need Attention`,
         body: `${outOfStock.length} item${outOfStock.length !== 1 ? 's are' : ' is'} out of stock and ${critical.length} ${critical.length !== 1 ? 'are' : 'is'} critically low.${outOfStock.length > 0 ? ' Out-of-stock items: ' + outOfStock.map(i => i.name).join(', ') + '.' : ''}`,
         recommendation: 'Restock high-demand items first. Based on sell rate, prioritize: ' + lowStockItems.slice(0, 3).map(i => `${i.name} (reorder ${i.suggested_reorder} units)`).join(', ') + '.',
         priority: 'critical',
+        actions: [
+          { label: 'Restock All Low Items', action: 'restock_all', icon: '📦', detail: restockNames },
+        ],
       });
     } else {
       insights.push({
@@ -845,6 +838,10 @@ async function load_insights() {
         body: `Customer complaints that go unresolved for more than 24 hours have a 3x higher churn risk.`,
         recommendation: 'Resolve open escalations promptly. Consider offering a discount or replacement to recover dissatisfied customers.',
         priority: 'critical',
+        actions: [
+          { label: 'Send Apology to All', action: 'apology_all', icon: '💬' },
+          { label: 'View Escalations', action: 'nav_escalations', icon: '→' },
+        ],
       });
     }
 
@@ -905,6 +902,7 @@ async function load_insights() {
                   <svg class="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
                   <p class="text-xs text-slate-600"><strong class="text-slate-700">Recommendation:</strong> ${i.recommendation}</p>
                 </div>
+                ${i.actions ? `<div class="mt-3 flex flex-wrap gap-2">${i.actions.map(a => `<button onclick="AdminApp.mock_action('${a.action}', '', '${a.detail || ''}', this)" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition-colors shadow-sm"><span>${a.icon}</span> ${a.label}</button>`).join('')}</div>` : ''}
               </div>
             </div>
           </div>
@@ -915,6 +913,39 @@ async function load_insights() {
   } catch (e) {
     container.innerHTML = `<div class="text-center py-8 text-red-500 text-sm">Failed to generate insights: ${e.message}</div>`;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Human-in-the-loop mock actions
+// ---------------------------------------------------------------------------
+
+function mock_action(action, id, detail, btnEl) {
+  const messages = {
+    whatsapp_apology: `Sending apology via WhatsApp to ${detail}... OpenClaw is composing a personalized message.`,
+    refund: `Processing refund for escalation #${id}. OpenClaw will notify ${detail} via WhatsApp once complete.`,
+    discount: `Generating 20% discount code for ${detail}. OpenClaw will send it via WhatsApp.`,
+    restock_all: `Placing restock orders for: ${detail}. OpenClaw is contacting your supplier.`,
+    apology_all: 'Sending personalized apology messages to all escalated customers via WhatsApp.',
+    nav_escalations: null,
+    restock_product: `Placing restock order for ${detail}. OpenClaw is contacting your supplier.`,
+  };
+
+  if (action === 'nav_escalations') {
+    navigate('escalations');
+    return;
+  }
+
+  const btn = btnEl || (typeof event !== 'undefined' && event.currentTarget);
+  if (!btn) { show_toast(messages[action] || 'Action sent to OpenClaw.', 'success'); return; }
+  btn.disabled = true;
+  btn.innerHTML = '<span class="animate-spin inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full"></span> Processing...';
+
+  setTimeout(() => {
+    btn.innerHTML = '<svg class="w-3.5 h-3.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Done';
+    btn.classList.remove('bg-green-600', 'bg-amber-500', 'bg-blue-500', 'bg-slate-800', 'hover:bg-green-700', 'hover:bg-amber-600', 'hover:bg-blue-600', 'hover:bg-slate-900');
+    btn.classList.add('bg-green-500');
+    show_toast(messages[action] || 'Action sent to OpenClaw.', 'success');
+  }, 1500);
 }
 
 // ---------------------------------------------------------------------------
@@ -983,12 +1014,6 @@ function init_mobile_menu() {
 // Modal wiring
 // ---------------------------------------------------------------------------
 function init_modals() {
-  // Resolve modal
-  el('close-resolve-modal')?.addEventListener('click', close_resolve_modal);
-  el('cancel-resolve-modal')?.addEventListener('click', close_resolve_modal);
-  el('confirm-resolve-btn')?.addEventListener('click', confirm_resolve);
-  el('resolve-modal')?.addEventListener('click', e => { if (e.target === el('resolve-modal')) close_resolve_modal(); });
-
   // Ship modal
   el('close-ship-modal')?.addEventListener('click', close_ship_modal);
   el('cancel-ship-modal')?.addEventListener('click', close_ship_modal);
@@ -1017,7 +1042,6 @@ function init_modals() {
 // ---------------------------------------------------------------------------
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    close_resolve_modal();
     close_ship_modal();
     close_memory_modal();
     el('mobile-nav')?.classList.add('hidden');
@@ -1046,5 +1070,6 @@ window.AdminApp = {
   update_order_status,
   cancel_order,
   open_ship_modal,
-  open_resolve_modal,
+  quick_resolve,
+  mock_action,
 };

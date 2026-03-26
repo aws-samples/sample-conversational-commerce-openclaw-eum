@@ -7,11 +7,11 @@
 ## What Was Built
 
 A full end-to-end WhatsApp e-commerce AI bot system for AWS, deployable in ~30 minutes. Demonstrates:
-- OpenClaw (Lightsail) as the AI orchestration brain
+- Bedrock Agent (Nova Lite) for real-time customer WhatsApp conversations
+- OpenClaw (Lightsail + Claude) as the intelligence layer: admin email, memory, AI Insights
 - End User Messaging Social for customer-facing WhatsApp
-- Amazon SES for transactional email
+- Amazon SES for two-way admin email
 - AWS Lambda as a stateless dispatcher
-- Multi-channel AI (customer WhatsApp, seller WhatsApp, email support)
 
 **Total: 32 files, ~15,000 lines of code + config + docs**
 
@@ -127,21 +127,19 @@ Customer WhatsApp
         ↓ (End User Messaging Social)
     SNS Topic
         ↓
-Lambda Dispatcher
-    (parses WhatsApp event)
-        ↓
-  OpenClaw Gateway
-   (Claude Sonnet 4.6)
+Lambda Dispatcher ──── (email inbound) ──→ OpenClaw (Claude)
+        ↓                                    ↑ async log
+  Bedrock Agent (Nova Lite) ─────────────────┘
         ↓
     ┌───┴────┬──────────┐
     ↓        ↓          ↓
-  MySQL    WhatsApp   SES Email
-  (DB)     (reply)    (confirm)
+  MySQL    WhatsApp   OpenClaw → SES Email
+  (DB)     (reply)    (admin alerts/insights)
 ```
 
-**Two WhatsApp channels:**
-- **Customer-facing**: End User Messaging Social (Business API)
-- **Seller/admin**: OpenClaw Linked Device (personal WhatsApp)
+**Two AI components:**
+- **Bedrock Agent (Nova Lite)**: Fast, cheap customer WhatsApp conversations
+- **OpenClaw (Claude on Lightsail)**: Admin email processing, memory compaction, AI Insights
 
 ---
 

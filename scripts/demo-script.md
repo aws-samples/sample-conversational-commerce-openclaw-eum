@@ -12,9 +12,9 @@ This script walks through every major feature in sequence:
 1. Browse the web storefront
 2. Trigger cart abandonment recovery via WhatsApp
 3. Complete a purchase and verify the stock alert email
-4. Leave a bad review and verify the escalation email
-5. Admin replies to escalation, OpenClaw processes the reply
-6. Send a direct WhatsApp message and verify AI responds
+4. Check escalation flow and admin action buttons
+5. Verify admin email alerts
+6. Send a direct WhatsApp message and verify AI responds (browse only, no ordering)
 7. Confirm everything is visible in the admin dashboard
 
 ---
@@ -109,47 +109,27 @@ This script walks through every major feature in sequence:
 
 ---
 
-## Step 6: Leave a 1-Star Review and Verify Escalation Email
+## Step 6: Verify Escalation from Purchase
 
 **Time: ~1 min**
 
-1. On the order confirmation page (Step 4), scroll down to the **Leave a Review** section.
-2. Click the **first star** (leftmost, value = 1) to select a 1-star rating.
-   - The star radio buttons are ordered 5 to 1 left to right; the rightmost is 1 star.
-3. In the review text box, type: `Terrible quality, very disappointed`
-4. Click **Submit Review**.
+Every purchase triggers a stock alert email (Step 5). Escalations can also be created via the WhatsApp bot when a customer reports a problem, or manually through the admin dashboard.
 
-**Expected outcome (storefront):** The review section is replaced with an amber box:
-> "Thank you for your feedback. We're sorry to hear about your experience. Our store owner has been notified and will follow up with you personally."
+1. Open the admin dashboard at `https://<your-cloudfront-domain>/admin.html`.
+2. Click **Escalations** in the sidebar.
+3. If an open escalation exists, you can use the action buttons (Send Apology, Issue Refund, Offer 20% Discount) and click **Resolve**.
 
-**Expected outcome (admin inbox):** Within ~30 seconds, an email arrives at `admin@anycompany.com` with subject:
-> `[Claw Boutique] Negative Review Alert: 1 star from Demo Tester`
-
-The email body includes the customer name, phone (+15550001234), rating (1 star), and the review text. The `POST /api/reviews` endpoint returns `{ action: "escalate" }` for ratings 1-2.
+**Note:** The storefront no longer has a review form on the order confirmation page. Escalations are created via the API (`POST /api/escalations`) by the WhatsApp bot or programmatically.
 
 ---
 
-## Step 7: Admin Replies to Escalation Email
+## Step 7: Admin Email Alerts
 
 **Time: ~1 min**
 
-1. In the admin inbox (`admin@anycompany.com`), open the negative review alert email from Step 6.
-2. Click **Reply**.
-3. Type the following reply body (the exact text does not matter, OpenClaw parses it):
-   ```
-   Please offer this customer a 20% discount and apologize
-   ```
-4. Send the reply.
-
-**Expected outcome:** The email is delivered to the SES inbound address (`orders@anycompany.com`). The SES receipt rule routes it to the SNS topic, then Lambda dispatcher, then OpenClaw gateway. OpenClaw:
-- Parses the admin instruction from the email body.
-- Calls `recall_memory` to check for similar past resolutions.
-- Calls `send_customer_reply` to send a WhatsApp apology + discount offer to +15550001234.
-- Calls `save_memory` to log the resolution for future reference.
-
-**Verify:** Check the WhatsApp on +15550001234 for a reply from the business number (+1 249-209-7349) within 60-90 seconds. The message should acknowledge the complaint and mention a discount.
-
-**Timing note:** Email round-trip (send to SES receipt to SNS to Lambda to OpenClaw to Bedrock to WhatsApp) typically takes 30-90 seconds end-to-end.
+1. Check your admin inbox (`rsunga@amazon.com`) for stock alert emails from Step 5.
+2. Every purchase sends a stock status email with subject: `[Claw Boutique] Stock Alert`.
+3. Admin can reply to these emails. The SES receipt rule routes replies to the SNS topic, then Lambda dispatcher, then OpenClaw gateway for processing.
 
 ---
 
@@ -171,9 +151,9 @@ The email body includes the customer name, phone (+15550001234), rating (1 star)
    ```
    I'd like to order the Wrap Midi Dress please
    ```
-6. ClawBot should ask for your name, email, and confirm the order details before placing it.
+6. ClawBot directs the customer to the storefront to complete the purchase: `https://d22y1hcx8ni0pf.cloudfront.net`
 
-**Verify:** The conversation demonstrates multi-turn memory. ClawBot remembers that you asked about dresses in size S.
+**Verify:** The bot does NOT place orders directly. It helps customers browse and then links them to the storefront for checkout.
 
 ---
 
@@ -186,7 +166,7 @@ The email body includes the customer name, phone (+15550001234), rating (1 star)
    - **Total Orders** should include the order from Step 4.
    - **Pending** should show the Step 4 order as pending.
    - **Revenue** should reflect the order total from Step 4.
-   - **Escalations** should show at least 1 (from the 1-star review).
+   - **Escalations** shows any open escalations from customer reports or WhatsApp issues.
 3. Recent orders and open escalations appear below the stat cards.
 
 **Expected outcome:** All data is live from the Store API. The dashboard auto-refreshes every 30 seconds.
@@ -217,11 +197,13 @@ The email body includes the customer name, phone (+15550001234), rating (1 star)
 
 1. Click **Escalations** in the left sidebar.
 2. Verify at least one open escalation appears with a red border, showing the customer phone and reason.
-3. Click the **Resolve** button on an open escalation.
-4. In the modal, select an action (e.g., "Refund issued") and enter resolution notes.
-5. Click **Mark Resolved**. A green toast notification confirms the resolution.
+3. Use the action buttons on the escalation card:
+   - **Send Apology via WhatsApp** - sends a personalized apology message
+   - **Issue Refund** - processes a refund for the customer
+   - **Offer 20% Discount** - generates and sends a discount code
+4. Click **Resolve** to mark the escalation as resolved.
 
-**Expected outcome:** The escalation card updates to show a green "resolved" badge. The escalation badge count in the sidebar decreases.
+**Expected outcome:** Action buttons show a "Done" confirmation after clicking. The Resolve button marks the escalation as resolved and the card updates to show a green "resolved" badge.
 
 ---
 
@@ -283,8 +265,8 @@ The email body includes the customer name, phone (+15550001234), rating (1 star)
 | 3 | Wait for abandonment recovery | ~2 min 30 sec |
 | 4 | Complete purchase | ~1 min |
 | 5 | Check stock alert email | ~1 min |
-| 6 | Leave 1-star review | ~1 min |
-| 7 | Admin email reply to WhatsApp | ~1 min |
+| 6 | Verify escalation flow | ~1 min |
+| 7 | Admin email alerts | ~1 min |
 | 8 | Direct WhatsApp conversation | ~2 min |
 | 9 | Admin dashboard overview | ~1 min |
 | 10 | Manage orders | ~1 min |

@@ -2,93 +2,133 @@
 
 Step-by-step walkthrough of every feature in Claw Boutique. Open the storefront and admin dashboard side by side for the best experience.
 
-- **Storefront:** `https://<cloudfront-domain>/`
-- **Admin Dashboard:** `https://<cloudfront-domain>/admin.html`
+- **Storefront:** https://d22y1hcx8ni0pf.cloudfront.net
+- **Admin Dashboard:** https://d22y1hcx8ni0pf.cloudfront.net/admin.html
+- **WhatsApp Business Number:** +1 249-209-7349
 
 ---
 
 ## 1. Browse the storefront
 
-Open the storefront URL. You'll see the product catalog with category filters, placeholder images, and pricing.
+Open the storefront URL. The catalog loads with category tabs and product cards showing name, size, price, and stock.
 
 ![Storefront](screenshot-storefront.png)
 
-Click **All**, **Tops**, **Dresses**, **Bottoms**, or **Accessories** to filter. Each product card shows the name, category, size, price, and stock status.
+Click **All**, **Tops**, **Dresses**, **Bottoms**, or **Accessories** to filter products. Each card has an **Add to Cart** button for in-stock items.
 
 ---
 
 ## 2. Add a product to cart
 
-Click **Add to Cart** on any product. The cart icon in the top right updates with the item count. Click the cart to review items.
+Click **Add to Cart** on any product. The cart badge in the header updates. Click the cart icon to open the slide-over panel and review items.
 
-> A 10-second abandonment timer starts when you add an item. If you don't check out in time, a WhatsApp recovery message goes out (see Step 6).
+> A 2-minute abandonment timer starts when you add an item. If you don't check out in time, a WhatsApp recovery message goes to the customer (see Step 6).
 
 ---
 
 ## 3. Complete checkout
 
-Click **Checkout**. The form is pre-filled with demo customer details (name, phone, email). Click **Place Order**.
+Click **Checkout**. Fill in customer details (or use the pre-filled demo values) and click **Place Order**.
 
-What happens behind the scenes:
+Behind the scenes:
 - The Store API creates the order in MySQL
-- A stock analysis runs. If any purchased product is low or out of stock, the admin gets a stock alert email
-- A WhatsApp post-purchase survey is sent to the customer's phone
+- A stock check runs and sends a stock alert email to the admin (every purchase triggers this)
+- A WhatsApp post-purchase survey is sent to the customer's phone number
 
 ---
 
-## 4. Check WhatsApp for the post-purchase survey
+## 4. WhatsApp post-purchase survey
 
 After checkout, the customer receives a WhatsApp message asking for a 1-5 rating.
 
 ![WhatsApp Survey](mockup-wa-survey.png)
 
-If the customer replies with **1 or 2**, an escalation email is sent to the admin and an escalation record is created in the admin dashboard.
+**What the customer sees:**
+
+> Hi Demo Tester! Thanks for your Claw Boutique order (#37). We'd love your feedback on Floral Wrap Blouse - Ivory / XS.
+>
+> How would you rate your experience? Reply with a number from 1 to 5:
+>   1 = Very poor
+>   2 = Poor
+>   3 = Okay
+>   4 = Good
+>   5 = Excellent
+
+If the customer replies **1 or 2**, the system:
+- Creates a review record in the database
+- Creates an escalation visible on the admin dashboard
+- Sends an escalation alert email to the admin
+- Replies to the customer: "We're sorry to hear that. Our store owner has been notified and will follow up with you personally."
+
+Ratings of 4-5 get a thank you reply. Rating 3 gets a "how can we improve" follow-up.
 
 ---
 
-## 5. See the stock alert email
+## 5. Stock alert email
 
-If the purchased product was low on stock, the admin gets an email like this:
+Every purchase triggers a stock status email to the admin.
 
 ![Stock Alert Email](mockup-email-stock.png)
 
-The email includes current stock levels, daily sell rates, projected days until stockout, and suggested reorder quantities. The admin can reply directly to take action.
+**What the admin receives:**
+
+> **Subject:** [Claw Boutique] Stock Alert: 1 item(s) need attention
+>
+> **Floral Wrap Blouse** - Current stock: 4 units
+> Daily sell rate: 1.2/day - Projected stockout: 3 days
+> Suggested reorder: 10 units
+
+The admin sees stock levels, sell rates, and projected days until stockout for every purchased item.
 
 ---
 
-## 6. Trigger cart abandonment recovery
+## 6. Cart abandonment recovery
 
-Go back to the storefront and add a product to cart, but do not check out. Wait 10 seconds. The customer's phone gets a WhatsApp recovery message:
+Go back to the storefront and add a product to cart without checking out. After 2 minutes, the customer receives a WhatsApp recovery message.
 
 ![Cart Recovery WhatsApp](mockup-wa-cart.png)
 
+**What the customer sees:**
+
+> Hey! We noticed you were eyeing the Floral Wrap Blouse - Ivory / XS at Claw Boutique. Still thinking about it? We'd love to offer you free shipping if you complete your order in the next hour! Just reply here or visit our store.
+
 ---
 
-## 7. See the escalation email (negative review)
+## 7. Escalation alert email (from negative review)
 
-If the customer left a 1-star rating in the survey (Step 4), the admin gets an escalation email:
+If the customer gave a 1-star or 2-star rating in Step 4, the admin gets an escalation email.
 
 ![Escalation Email](mockup-email-escalation.png)
 
-The admin can reply to this email with instructions like "offer a 20% discount" or "send a replacement." ClawBot routes the reply through SES inbound to OpenClaw, which follows up with the customer on WhatsApp.
+**What the admin receives:**
+
+> **Subject:** [Claw Boutique] Negative Review Alert: 1 star from Demo Tester
+>
+> Customer: Demo Tester (+6597209504)
+> Rating: 1/5
+> Review: WhatsApp survey reply: Very poor
+>
+> Please follow up with this customer as soon as possible.
 
 ---
 
-## 8. Open the admin dashboard
+## 8. Admin dashboard overview
 
-Switch to the admin dashboard URL. The main page shows real-time stats: total orders, pending orders, revenue, and unresolved escalations.
+Open the admin dashboard. The main page shows real-time stat cards: total orders, pending orders, revenue, and unresolved escalations.
 
 ![Admin Dashboard](screenshot-admin-dashboard.png)
+
+All data comes from the live Store API and auto-refreshes every 30 seconds.
 
 ---
 
 ## 9. Manage orders
 
-Click **Orders** in the sidebar. You'll see all orders with status filters (All, Pending, Confirmed, Shipped, Delivered, Cancelled).
+Click **Orders** in the sidebar. Use the status filter tabs (All, Pending, Confirmed, Shipped, Delivered, Cancelled) to find orders.
 
 ![Admin Orders](screenshot-admin-orders.png)
 
-Click any order row to open the detail panel on the right. From here you can:
+Click any order row to open the detail panel. From there:
 - **Confirm** a pending order
 - **Ship** a confirmed order (enter a tracking URL)
 - **Mark Delivered** for shipped orders
@@ -96,39 +136,76 @@ Click any order row to open the detail panel on the right. From here you can:
 
 ---
 
-## 10. Resolve an escalation
+## 10. Handle escalations
 
-Click **Escalations** in the sidebar. Open escalations show in red. Click **Resolve** to open the resolution modal.
+Click **Escalations** in the sidebar. Open escalations show with a red border and action buttons.
 
-Pick an action (refund issued, replacement shipped, resolved via chat, no action needed), add optional notes, and click **Mark Resolved**.
+![Admin Escalations](screenshot-admin-escalations.png)
+
+Each open escalation has three action buttons:
+- **Send Apology via WhatsApp** - composes and sends a personalized apology
+- **Issue Refund** - processes a refund for the customer
+- **Offer 20% Discount** - generates and sends a discount code via WhatsApp
+
+Buttons show a spinner while processing, then switch to "Done" when complete. Click **Resolve** to close the escalation.
 
 ---
 
-## 11. View products and memory
+## 11. View products
 
-Click **Products** to see the full catalog with stock levels. Low-stock items are highlighted in red.
+Click **Products** in the sidebar. The full catalog shows with stock levels. Items below 5 units show a **Low** badge and a **Restock** button. Out-of-stock items show an **Out** badge in red.
 
-Click **Memory** to see saved interaction memories. Click **Add Memory** to manually log a customer interaction (phone, type, summary, resolution, tags).
+Clicking **Restock** triggers a simulated restock order (button changes to "Done").
 
 ---
 
-## 12. Check AI Insights
+## 12. Customer memory
 
-Click **AI Insights** in the sidebar. ClawBot generates a daily analysis based on real store data:
+Click **Memory** in the sidebar. This shows saved interaction memories for each customer. Click **Add Memory** to log a new entry with phone number, type, summary, and tags.
+
+OpenClaw automatically compacts interaction history into these memory entries over time. The Bedrock Agent can reference them for context in future conversations.
+
+---
+
+## 13. AI Insights
+
+Click **AI Insights** in the sidebar. ClawBot generates a daily analysis from live store data.
 
 ![AI Insights](screenshot-admin-insights.png)
 
-Insights include revenue summary, pending order alerts, stock warnings, escalation reminders, category optimization tips, and WhatsApp engagement suggestions. Each insight has a specific recommendation.
+Insight cards include:
+- **Revenue Summary** - total revenue, order count, average order value
+- **Pending Orders** - unconfirmed orders that need attention
+- **Stock Alert** - out-of-stock and low items with a **Restock All Low Items** button
+- **Escalations** - unresolved customer complaints with **Send Apology to All** and **View Escalations** buttons
+- **Category Optimization** - suggestions for expanding product lines
+- **WhatsApp Engagement** - recommendations for broadcast strategies
+
+Each card has actionable buttons that trigger mock actions through OpenClaw.
 
 ---
 
-## 13. WhatsApp conversation (via OpenClaw)
+## 14. WhatsApp browsing (Bedrock Agent)
 
-If the Lightsail instance is running with OpenClaw, you can text the business WhatsApp number directly. The AI agent handles browsing, ordering, and support.
+Text the business WhatsApp number (+1 249-209-7349). The Bedrock Agent (Nova Lite) handles product browsing and support.
 
 ![WhatsApp Order Conversation](mockup-wa-order.png)
 
-The agent browses the catalog, collects customer details, places the order, and confirms, all within WhatsApp.
+**Example conversation:**
+
+> **Customer:** Hi, what dresses do you have in size S?
+>
+> **ClawBot:** Hey! Here are the dresses we have in size S:
+> 1. Wrap Midi Dress - Sage Green - $68.00
+> 2. Floral Wrap Blouse - Ivory - $42.00
+> 3. Ribbed Bodycon Dress - Black - $55.00
+>
+> **Customer:** I'd like to buy the Wrap Midi Dress
+>
+> **ClawBot:** Great choice! To place your order, head to our storefront: https://d22y1hcx8ni0pf.cloudfront.net
+> You can add the Wrap Midi Dress to your cart and check out there.
+
+The bot can browse the catalog, look up order status, and create escalations. It directs customers to the storefront for purchases.
 
 ---
 
@@ -143,4 +220,4 @@ npx playwright install chromium
 npx playwright test
 ```
 
-16 tests run in about 2 minutes. They cover storefront browsing, checkout, stock alerts, WhatsApp survey, review escalation, cart abandonment, and every admin dashboard section.
+13 tests run across storefront (catalog, cart, checkout) and admin dashboard (stats, navigation, orders, filters, escalation actions, product restock, memory, insights, mobile nav).

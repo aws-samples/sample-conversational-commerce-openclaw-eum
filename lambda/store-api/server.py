@@ -227,16 +227,37 @@ def _check_stock_and_alert(product_ids: list[int]):
             elif stock <= 5:
                 alerts.append(f"LOW STOCK: {r['name']} — only {stock} units remaining")
 
-        if alerts:
-            alert_text = "\n\n".join(alerts)
-            subject = f"[Claw Boutique] Stock Alert: {len(alerts)} item(s) need attention"
-            html = f"""<html><body style="font-family:sans-serif;color:#333;max-width:600px;margin:auto;padding:20px">
-<h2 style="color:#c0392b">Claw Boutique — Stock Alert</h2>
-<p>The following items need your attention after a recent purchase:</p>
-{"".join(f'<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:12px;margin:8px 0"><strong>{a.split(":")[0]}</strong>: {":".join(a.split(":")[1:])}</div>' for a in alerts)}
+        # Always send a stock report after a purchase (for demo visibility)
+        if not alerts:
+            for r in rows:
+                stock = int(r["stock_qty"])
+                sold = int(r["units_sold_30d"])
+                daily_rate = sold / 30.0 if sold > 0 else 0
+                alerts.append(
+                    f"OK: {r['name']} — {stock} units in stock"
+                    + (f" ({daily_rate:.1f}/day sell rate)" if daily_rate > 0 else "")
+                )
+
+        alert_text = "\n\n".join(alerts)
+        has_issues = any(a.startswith("OUT OF STOCK") or a.startswith("LOW STOCK") for a in alerts)
+        if has_issues:
+            subject = f"[Claw Boutique] Stock Alert: {sum(1 for a in alerts if not a.startswith('OK'))} item(s) need attention"
+        else:
+            subject = f"[Claw Boutique] Stock Report: {len(rows)} item(s) after purchase"
+
+        color_map = {"OUT OF STOCK": ("#fde8e8", "#e53e3e", "red"), "LOW STOCK": ("#fff3cd", "#ffc107", "amber"), "OK": ("#e8f5e9", "#38a169", "green")}
+        def _alert_box(a):
+            key = a.split(":")[0]
+            bg, border, _ = color_map.get(key, ("#f0f0f0", "#ccc", "grey"))
+            return f'<div style="background:{bg};border:1px solid {border};border-radius:8px;padding:12px;margin:8px 0"><strong>{key}</strong>: {":".join(a.split(":")[1:])}</div>'
+
+        html = f"""<html><body style="font-family:sans-serif;color:#333;max-width:600px;margin:auto;padding:20px">
+<h2 style="color:{'#c0392b' if has_issues else '#38a169'}">Claw Boutique — {'Stock Alert' if has_issues else 'Stock Report'}</h2>
+<p>{'The following items need your attention after a recent purchase:' if has_issues else 'Stock levels after a recent purchase:'}</p>
+{"".join(_alert_box(a) for a in alerts)}
 <p style="margin-top:20px;color:#888;font-size:12px">Automated alert from Claw Boutique AI</p>
 </body></html>"""
-            _send_admin_email(subject, html, f"Stock Alert\n\n{alert_text}")
+        _send_admin_email(subject, html, f"Stock Report\n\n{alert_text}")
     except Exception:
         logger.exception("Stock check failed")
 
@@ -341,6 +362,42 @@ def get_product(product_id: int):
             "created_at": row["created_at"].isoformat() if row["created_at"] else None,
         }
     )
+
+
+@app.route("/api/products/<int:product_id>", methods=["PATCH"])
+def update_product(product_id):
+    data = request.get_json(silent=True) or {}
+    allowed = {"stock_qty", "price", "name", "description"}
+    updates = {k: v for k, v in data.items() if k in allowed}
+    if not updates:
+        return _err("No valid fields to update", 400)
+    set_clause = ", ".join(f"{k} = %s" for k in updates)
+    values = list(updates.values()) + [product_id]
+    try:
+        with get_db() as conn:
+            with _cursor(conn) as cur:
+                cur.execute(f"UPDATE products SET {set_clause} WHERE id = %s", values)
+                conn.commit()
+    except Exception as exc:
+        logger.exception("update_product error")
+        return _err(str(exc), 500)
+    return jsonify({"ok": True, "updated": list(updates.keys())})
+
+
+@app.route("/api/products/reset-stock", methods=["POST"])
+def reset_stock():
+    data = request.get_json(silent=True) or {}
+    qty = int(data.get("stock_qty", 5))
+    try:
+        with get_db() as conn:
+            with _cursor(conn) as cur:
+                cur.execute("UPDATE products SET stock_qty = %s", (qty,))
+                conn.commit()
+                count = cur.rowcount
+    except Exception as exc:
+        logger.exception("reset_stock error")
+        return _err(str(exc), 500)
+    return jsonify({"ok": True, "products_updated": count, "stock_qty": qty})
 
 
 # ---------------------------------------------------------------------------
@@ -1111,6 +1168,118 @@ def create_review():
         "review_id": review_id,
         "rating": rating,
         "action": action,
+    }), 201
+
+
+@app.route("/api/reviews/from-whatsapp", methods=["POST"])
+def create_review_from_whatsapp():
+    """Handle a review rating reply from WhatsApp.
+
+    Looks up the most recent order for the given phone number and submits
+    the review on behalf of the customer.  Expects: {phone, rating}.
+    """
+    data = request.get_json(silent=True) or {}
+    phone = data.get("phone", "").strip()
+    rating_raw = data.get("rating")
+
+    if not phone or rating_raw is None:
+        return _err("Missing required fields: phone, rating")
+
+    try:
+        rating = int(rating_raw)
+    except (ValueError, TypeError):
+        return _err("Rating must be a number 1-5")
+
+    if rating < 1 or rating > 5:
+        return _err("Rating must be between 1 and 5")
+
+    # Look up most recent order for this phone
+    try:
+        with get_db() as conn:
+            with _cursor(conn) as cur:
+                cur.execute(
+                    """SELECT o.id, o.customer_name, o.customer_phone
+                       FROM orders o
+                       WHERE o.customer_phone = %s
+                       ORDER BY o.created_at DESC LIMIT 1""",
+                    (phone,),
+                )
+                order = cur.fetchone()
+    except Exception as exc:
+        logger.exception("from-whatsapp review lookup error")
+        return _err(str(exc), 500)
+
+    if not order:
+        return _err(f"No orders found for phone {phone}", 404)
+
+    # Build review text from rating
+    rating_labels = {1: "Very poor", 2: "Poor", 3: "Okay", 4: "Good", 5: "Excellent"}
+    review_text = f"WhatsApp survey reply: {rating_labels.get(rating, str(rating))}"
+
+    customer_name = order["customer_name"]
+
+    # Insert review
+    try:
+        with get_db() as conn:
+            with _cursor(conn) as cur:
+                cur.execute(
+                    """INSERT INTO reviews
+                       (customer_phone, customer_name, order_id, rating, review_text)
+                       VALUES (%s, %s, %s, %s, %s)""",
+                    (phone, customer_name, order["id"], rating, review_text),
+                )
+                review_id = cur.lastrowid
+    except Exception as exc:
+        logger.exception("from-whatsapp review insert error")
+        return _err(str(exc), 500)
+
+    action = "auto_thank" if rating >= 4 else "follow_up" if rating == 3 else "escalate"
+
+    if action == "escalate":
+        subject = f"[Claw Boutique] Negative Review Alert: {rating} star from {customer_name}"
+        html = f"""<html><body style="font-family:sans-serif;color:#333;max-width:600px;margin:auto;padding:20px">
+<h2 style="color:#c0392b">Claw Boutique: Negative Review Alert</h2>
+<p>A customer has left a <strong>{rating}-star review</strong> via WhatsApp that requires your attention.</p>
+<table style="width:100%;border-collapse:collapse">
+  <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Customer</strong></td>
+      <td style="padding:8px;border-bottom:1px solid #eee">{customer_name} ({phone})</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Rating</strong></td>
+      <td style="padding:8px;border-bottom:1px solid #eee">{"&#11088;" * rating}{"&#9734;" * (5-rating)} ({rating}/5)</td></tr>
+  <tr><td style="padding:8px"><strong>Review</strong></td>
+      <td style="padding:8px">{review_text}</td></tr>
+</table>
+<p style="margin-top:20px;color:#c0392b;font-weight:bold">Please follow up with this customer as soon as possible.</p>
+</body></html>"""
+        text = (
+            f"Negative Review Alert\n\n"
+            f"Customer: {customer_name} ({phone})\n"
+            f"Rating: {rating}/5\n"
+            f"Review: {review_text}\n\n"
+            f"Please follow up with this customer."
+        )
+        _send_admin_email(subject, html, text)
+
+        # Also create an escalation so it appears on the dashboard
+        try:
+            with get_db() as conn:
+                with _cursor(conn) as cur:
+                    cur.execute(
+                        """INSERT INTO escalations
+                            (customer_phone, reason, summary, seller_notified, created_at)
+                        VALUES (%s, %s, %s, %s, %s)""",
+                        (phone, f"{rating}-star review",
+                         f"{customer_name} rated {rating}/5: {review_text}",
+                         1, datetime.utcnow()),
+                    )
+        except Exception as exc:
+            logger.exception("from-whatsapp escalation insert error")
+
+    return jsonify({
+        "review_id": review_id,
+        "rating": rating,
+        "action": action,
+        "customer_name": customer_name,
+        "order_id": order["id"],
     }), 201
 
 

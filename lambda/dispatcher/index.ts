@@ -1,7 +1,8 @@
 /**
  * Claw Boutique – Lambda Dispatcher
  * ----------------------------------
- * Consumes SNS messages and routes inbound events to the OpenClaw gateway.
+ * Consumes SNS messages and routes inbound events to Bedrock Agent (WhatsApp)
+ * or the OpenClaw gateway (SES email, WhatsApp statuses).
  *
  * Supported event types
  * ─────────────────────
@@ -18,18 +19,34 @@
  *                  ├─ .entry[].changes[].value.messages[]     (inbound messages)
  *                  └─ .entry[].changes[].value.statuses[]     (delivery receipts)
  *
+ *    Inbound messages are routed to Bedrock Agent; the reply is sent back to
+ *    the customer via AWS End User Messaging Social (SendWhatsAppMessage).
+ *    A fire-and-forget log POST is sent to OpenClaw for async record-keeping.
+ *
  * 2. SES inbound email events
  *    Delivered via SES → S3/SQS → SNS.  The SNS `Message` field contains the
  *    SES notification JSON with `mail`, `receipt` and optionally `content`.
+ *    Routed unchanged to the OpenClaw gateway.
  *
  * Environment variables
  * ─────────────────────
- *   OPENCLAW_GATEWAY_URL   – Base HTTPS URL of the OpenClaw gateway
- *                            e.g. https://api.openclaw.example.com
- *   OPENCLAW_GATEWAY_TOKEN – Bearer token sent in every request
+ *   OPENCLAW_GATEWAY_URL      – Base HTTPS URL of the OpenClaw gateway
+ *                               e.g. https://api.openclaw.example.com
+ *   OPENCLAW_GATEWAY_TOKEN    – Bearer token sent in every request to OpenClaw
+ *   BEDROCK_AGENT_ID          – Bedrock Agent ID
+ *   BEDROCK_AGENT_ALIAS_ID    – Bedrock Agent Alias ID
+ *   WHATSAPP_PHONE_NUMBER_ID  – EUMS origination phone number ID
  */
 
 import axios, { AxiosError } from "axios";
+import {
+  BedrockAgentRuntimeClient,
+  InvokeAgentCommand,
+} from "@aws-sdk/client-bedrock-agent-runtime";
+import {
+  SocialMessagingClient,
+  SendWhatsAppMessageCommand,
+} from "@aws-sdk/client-socialmessaging";
 import type {
   SNSEvent,
   SNSEventRecord,
@@ -43,11 +60,27 @@ import type {
 
 const GATEWAY_URL = (process.env.OPENCLAW_GATEWAY_URL ?? "").replace(/\/$/, "");
 const GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN ?? "";
-const AGENT_BRIDGE_URL = (process.env.AGENT_BRIDGE_URL ?? "").replace(/\/$/, "");
+const BEDROCK_AGENT_ID = process.env.BEDROCK_AGENT_ID ?? "";
+const BEDROCK_AGENT_ALIAS_ID = process.env.BEDROCK_AGENT_ALIAS_ID ?? "";
+const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID ?? "";
+const STORE_API_URL = (process.env.STORE_API_URL ?? "").replace(/\/$/, "");
 
 if (!GATEWAY_URL) {
-  console.warn("[dispatcher] OPENCLAW_GATEWAY_URL is not set – all POSTs will fail");
+  console.warn("[dispatcher] OPENCLAW_GATEWAY_URL is not set – SES/status POSTs will fail");
 }
+if (!BEDROCK_AGENT_ID || !BEDROCK_AGENT_ALIAS_ID) {
+  console.warn("[dispatcher] BEDROCK_AGENT_ID or BEDROCK_AGENT_ALIAS_ID is not set – WhatsApp messages will fail");
+}
+if (!WHATSAPP_PHONE_NUMBER_ID) {
+  console.warn("[dispatcher] WHATSAPP_PHONE_NUMBER_ID is not set – WhatsApp replies will fail");
+}
+
+// ---------------------------------------------------------------------------
+// AWS SDK clients
+// ---------------------------------------------------------------------------
+
+const bedrockAgentClient = new BedrockAgentRuntimeClient({});
+const socialMessagingClient = new SocialMessagingClient({});
 
 // ---------------------------------------------------------------------------
 // Structured logger
@@ -102,37 +135,73 @@ async function postToUrl(url: string, body: unknown): Promise<unknown> {
 }
 
 /**
+ * Invoke the Bedrock Agent with the customer's message text and return the
+ * agent's reply by collecting all streaming response chunks.
+ */
+async function invokeBedrockAgent(senderPhone: string, messageText: string): Promise<string> {
+  const command = new InvokeAgentCommand({
+    agentId: BEDROCK_AGENT_ID,
+    agentAliasId: BEDROCK_AGENT_ALIAS_ID,
+    sessionId: senderPhone.replace(/\+/g, ""),
+    inputText: messageText,
+  });
+
+  const response = await bedrockAgentClient.send(command);
+  let replyText = "";
+  if (response.completion) {
+    for await (const event of response.completion) {
+      if (event.chunk?.bytes) {
+        replyText += new TextDecoder().decode(event.chunk.bytes);
+      }
+    }
+  }
+  return replyText;
+}
+
+/**
+ * Submit a WhatsApp survey rating reply to the Store API review endpoint.
+ * Returns the review response or null if the API call fails.
+ */
+async function submitWhatsAppReview(phone: string, rating: number): Promise<{ action: string; customer_name?: string } | null> {
+  if (!STORE_API_URL) {
+    log("WARN", "STORE_API_URL not set, cannot submit WhatsApp review");
+    return null;
+  }
+  try {
+    const resp = await axios.post(`${STORE_API_URL}/api/reviews/from-whatsapp`, {
+      phone,
+      rating,
+    }, { timeout: 10_000 });
+    return resp.data as { action: string; customer_name?: string };
+  } catch (err) {
+    const axiosErr = err as AxiosError;
+    log("WARN", "WhatsApp review submission failed", {
+      phone,
+      rating,
+      status: axiosErr.response?.status,
+      error: axiosErr.message,
+    });
+    return null;
+  }
+}
+
+/**
  * Send a WhatsApp text reply via AWS End User Messaging Social (EUMS).
  */
-async function sendWhatsAppReply(
-  to: string,
-  text: string,
-  phoneNumberId: string,
-): Promise<void> {
-  // Use the AWS SDK v3 via axios to the EUMS SendWhatsAppMessage API
-  // For simplicity in Lambda, we call the send_customer_reply tool via the bridge
-  // OR use the EUMS direct API. Using the bridge/tool approach:
-  const bridgeUrl = AGENT_BRIDGE_URL || GATEWAY_URL;
-  try {
-    await axios.post(`${bridgeUrl}/send-reply`, {
-      to,
-      text,
-      phoneNumberId,
-    }, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${GATEWAY_TOKEN}`,
-      },
-      timeout: 10_000,
-    });
-    log("INFO", "WhatsApp reply sent via bridge", { to });
-  } catch (err) {
-    // If bridge send-reply fails, log but don't throw — the agent response was already generated
-    log("WARN", "Failed to send WhatsApp reply via bridge", {
-      to,
-      error: (err as Error).message,
-    });
-  }
+async function sendWhatsAppReply(to: string, text: string): Promise<void> {
+  const sendCmd = new SendWhatsAppMessageCommand({
+    originationPhoneNumberId: WHATSAPP_PHONE_NUMBER_ID,
+    metaApiVersion: "v21.0",
+    message: Buffer.from(
+      JSON.stringify({
+        messaging_product: "whatsapp",
+        to,
+        type: "text",
+        text: { body: text },
+      })
+    ),
+  });
+  await socialMessagingClient.send(sendCmd);
 }
 
 // ---------------------------------------------------------------------------
@@ -338,7 +407,7 @@ async function handleWhatsAppRecord(record: SNSEventRecord): Promise<void> {
           phoneNumberId: value.metadata?.phone_number_id,
         });
 
-        // Route each message to the Agent Bridge for processing
+        // Route each message through Bedrock Agent and reply directly to customer
         for (const msg of value.messages) {
           const senderPhone = msg.from ?? "";
           const messageText =
@@ -346,9 +415,6 @@ async function handleWhatsAppRecord(record: SNSEventRecord): Promise<void> {
             msg.interactive?.button_reply?.title ??
             msg.interactive?.list_reply?.title ??
             "";
-          const contactName =
-            value.contacts?.find((c: Record<string, unknown>) => c.wa_id === senderPhone)
-              ?.profile?.name ?? "";
 
           if (!messageText) {
             log("WARN", "Skipping non-text message", {
@@ -358,15 +424,63 @@ async function handleWhatsAppRecord(record: SNSEventRecord): Promise<void> {
             continue;
           }
 
-          const bridgeUrl = AGENT_BRIDGE_URL || GATEWAY_URL;
-          await postToUrl(`${bridgeUrl}/inbound/whatsapp`, {
+          // Check if this is a survey rating reply (single digit 1-5)
+          const trimmed = messageText.trim();
+          if (/^[1-5]$/.test(trimmed)) {
+            const rating = parseInt(trimmed, 10);
+            log("INFO", "Detected survey rating reply", { from: senderPhone, rating });
+
+            const reviewResult = await submitWhatsAppReview(senderPhone, rating);
+            if (reviewResult) {
+              const name = reviewResult.customer_name || "there";
+              let replyMsg: string;
+              if (rating >= 4) {
+                replyMsg = `Thank you${name !== "there" ? ` ${name}` : ""}! We're glad you had a great experience. See you next time!`;
+              } else if (rating === 3) {
+                replyMsg = `Thanks for your feedback${name !== "there" ? ` ${name}` : ""}. We'd love to do better next time! Let us know if there's anything specific we can improve.`;
+              } else {
+                replyMsg = `We're sorry to hear that${name !== "there" ? ` ${name}` : ""}. Our store owner has been notified and will follow up with you personally. We appreciate your feedback.`;
+              }
+              await sendWhatsAppReply(senderPhone, replyMsg);
+              log("INFO", "Survey reply processed and response sent", { from: senderPhone, action: reviewResult.action });
+              continue;
+            }
+            // If review submission failed (e.g. no order found), fall through to Bedrock Agent
+            log("INFO", "Review submission failed, falling through to Bedrock Agent", { from: senderPhone });
+          }
+
+          log("INFO", "Invoking Bedrock Agent", {
             from: senderPhone,
-            text: messageText,
-            name: contactName,
             messageId: msg.id,
-            timestamp: msg.timestamp,
-            phoneNumberId: value.metadata?.phone_number_id,
           });
+
+          // Invoke Bedrock Agent and collect streaming reply
+          const replyText = await invokeBedrockAgent(senderPhone, messageText);
+
+          log("INFO", "Bedrock Agent reply received", {
+            from: senderPhone,
+            replyLength: replyText.length,
+          });
+
+          // Send the reply back to the customer via EUMS
+          await sendWhatsAppReply(senderPhone, replyText);
+
+          log("INFO", "WhatsApp reply sent", { to: senderPhone });
+
+          // Fire-and-forget log POST to OpenClaw for async record-keeping
+          if (GATEWAY_URL) {
+            postToGateway("/inbound/log", {
+              from: senderPhone,
+              text: messageText,
+              reply: replyText,
+              timestamp: msg.timestamp,
+            }).catch((err: Error) => {
+              log("WARN", "OpenClaw log POST failed (non-fatal)", {
+                from: senderPhone,
+                error: err.message,
+              });
+            });
+          }
         }
       }
 
