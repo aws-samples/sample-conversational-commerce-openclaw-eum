@@ -42,6 +42,19 @@
 
   .mockup-section { padding: 40px; display: flex; justify-content: center; }
   .mockup-section.dark { background: #1a1a2e; }
+
+  /* Telegram mockup */
+  .tg-phone { width: 380px; background: #efeff3; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.18); }
+  .tg-header { background: linear-gradient(135deg, #1c96c5, #207ae4); color: white; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+  .tg-avatar { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.25); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .tg-name { font-size: 15px; font-weight: 600; }
+  .tg-status { font-size: 11px; color: rgba(255,255,255,0.75); }
+  .tg-chat { padding: 12px; min-height: 200px; display: flex; flex-direction: column; gap: 6px; background: #efeff3; }
+  .tg-msg { max-width: 85%; padding: 8px 12px; border-radius: 12px; font-size: 13px; line-height: 1.5; position: relative; }
+  .tg-msg .time { font-size: 10px; color: rgba(0,0,0,0.35); float: right; margin-left: 8px; margin-top: 4px; }
+  .tg-incoming { background: white; align-self: flex-start; border-top-left-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+  .tg-outgoing { background: #effdde; align-self: flex-end; border-top-right-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+  .tg-date { text-align: center; font-size: 11px; color: #8a8a8a; background: rgba(255,255,255,0.7); padding: 3px 10px; border-radius: 6px; align-self: center; margin: 4px 0; }
 </style>
 </head>
 <body>
@@ -200,6 +213,101 @@
       <p style="margin-top: 12px;">— Claw Boutique</p>
     </div>
     <div class="email-footer">Claw Boutique — Powered by OpenClaw + Amazon Bedrock</div>
+  </div>
+</div>
+
+<!-- Section 7: Telegram Stock Alert + Restock Command -->
+<div class="mockup-section dark" id="tg-stock">
+  <div class="tg-phone">
+    <div class="tg-header">
+      <div class="tg-avatar">🤖</div>
+      <div>
+        <div class="tg-name">ClawBot</div>
+        <div class="tg-status">bot</div>
+      </div>
+    </div>
+    <div class="tg-chat">
+      <div class="tg-date">Today</div>
+      <div class="tg-msg tg-incoming">
+        [Claw Boutique - Stock Alert]<br><br>
+        Low stock detected after order #42.<br><br>
+        • Floral Wrap Blouse - Ivory / S: <strong>0 units</strong> (OUT OF STOCK)<br>
+        • Floral Wrap Blouse - Ivory / M: <strong>2 units</strong> (critical)<br><br>
+        Daily sell rate: 1.2/day. Ivory/M runs out in ~1 day.<br><br>
+        Reply "restock 20" to reorder now.
+        <span class="time">2:33 PM</span>
+      </div>
+      <div class="tg-msg tg-outgoing">restock 20 <span class="time">2:35 PM</span></div>
+      <div class="tg-msg tg-incoming">
+        ✅ Restock confirmed!<br><br>
+        • Floral Wrap Blouse - Ivory / S: +20 units (new total: 20)<br>
+        • Floral Wrap Blouse - Ivory / M: +20 units (new total: 22)
+        <span class="time">2:35 PM</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 8: Telegram Review Escalation + Apologize Command -->
+<div class="mockup-section dark" id="tg-escalation">
+  <div class="tg-phone">
+    <div class="tg-header">
+      <div class="tg-avatar">🤖</div>
+      <div>
+        <div class="tg-name">ClawBot</div>
+        <div class="tg-status">bot</div>
+      </div>
+    </div>
+    <div class="tg-chat">
+      <div class="tg-date">Today</div>
+      <div class="tg-msg tg-incoming">
+        [Claw Boutique - Review Alert]<br><br>
+        ⭐ 1-star review received.<br><br>
+        Customer: Sarah Chen (+15550001234)<br>
+        Order: #31<br>
+        Review: "Very disappointed with the quality. Nothing like what was shown."<br><br>
+        Reply "apologize" to send apology + refund to this customer.
+        <span class="time">3:16 PM</span>
+      </div>
+      <div class="tg-msg tg-outgoing">apologize <span class="time">3:18 PM</span></div>
+      <div class="tg-msg tg-incoming">
+        ✅ Apology sent to Sarah Chen on WhatsApp.<br><br>
+        Full refund approved. Escalation #14 marked as resolved.<br><br>
+        Memory saved — similar cases will be handled automatically next time.
+        <span class="time">3:18 PM</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 9: Telegram Order Notification -->
+<div class="mockup-section dark" id="tg-order">
+  <div class="tg-phone">
+    <div class="tg-header">
+      <div class="tg-avatar">🤖</div>
+      <div>
+        <div class="tg-name">ClawBot</div>
+        <div class="tg-status">bot</div>
+      </div>
+    </div>
+    <div class="tg-chat">
+      <div class="tg-date">Today</div>
+      <div class="tg-msg tg-incoming">
+        [Claw Boutique - New Order]<br><br>
+        📦 Order #43 placed via web storefront.<br><br>
+        Customer: Demo Tester (+6597209504)<br>
+        Items: Floral Wrap Blouse - Ivory / M × 1<br>
+        Total: $38.00
+        <span class="time">4:12 PM</span>
+      </div>
+      <div class="tg-msg tg-outgoing">mark 43 as shipped, tracking ABC123 <span class="time">4:20 PM</span></div>
+      <div class="tg-msg tg-incoming">
+        ✅ Order #43 marked as shipped.<br>
+        Tracking: ABC123<br>
+        Shipping confirmation sent to Demo Tester by email.
+        <span class="time">4:20 PM</span>
+      </div>
+    </div>
   </div>
 </div>
 
