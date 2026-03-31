@@ -1,6 +1,6 @@
 # Claw Boutique
 
-AI-powered WhatsApp e-commerce bot built on AWS. Customers text a WhatsApp number to browse products, place orders, and get support. A Bedrock Agent (Nova Lite) handles conversations in real time. OpenClaw runs separately on Lightsail as the intelligence layer: it processes admin email replies, compacts interaction history, builds customer memory, and generates daily AI insights using Claude on Bedrock.
+AI-powered WhatsApp e-commerce bot built on AWS. Customers text a WhatsApp number to browse products, place orders, and get support. A Bedrock Agent (Nova Lite) handles conversations in real time. The store owner manages the shop through Telegram: stock alerts, review escalations, and restock commands all flow through a Telegram bot backed by OpenClaw on Lightsail, using Claude on Bedrock for reasoning.
 
 **[See the demo guide](docs/demo-guide.md)** for a step-by-step walkthrough with screenshots.
 
@@ -19,9 +19,9 @@ AI-powered WhatsApp e-commerce bot built on AWS. Customers text a WhatsApp numbe
 5. The reply goes back to the customer via EUM Social
 6. A copy of every message exchange is sent async to OpenClaw for memory and insights
 
-**Admin intelligence layer (strategic):**
+**Seller channel (Telegram):**
 
-OpenClaw on Lightsail handles the store owner's side. SES sends stock alerts and escalation emails. When the admin replies (e.g., "restock from supplier"), SES routes the reply through SNS to OpenClaw, which acts on the instructions using Claude on Bedrock. OpenClaw also compacts interaction history, builds customer memory, and generates the AI Insights dashboard.
+The store owner interacts through a Telegram bot backed by OpenClaw on Lightsail. The Store API sends stock alerts, review alerts, and escalation notifications to the seller via the agent-bridge, which delivers them through Telegram. The owner replies in Telegram with commands ("restock", "apologize") and OpenClaw acts on them using Claude on Bedrock. OpenClaw also builds customer memory and generates the AI Insights dashboard.
 
 **Web storefront:**
 
@@ -31,15 +31,16 @@ CloudFront serves the static site from S3, and the frontend calls the same Store
 
 | Service | What it does |
 |---------|-------------|
-| EUM Social | Managed WhatsApp Business integration |
-| SNS | Event bus for WhatsApp and SES inbound events |
+| EUM Social | Managed WhatsApp Business integration (customer channel) |
+| Telegram Bot | Seller notifications and command channel |
+| SNS | Event bus for WhatsApp inbound events |
 | Lambda (x2) | Dispatcher (routes messages) + Store API (Flask) |
 | Bedrock Agents | Nova Lite for real-time customer WhatsApp conversations |
-| Lightsail | Hosts OpenClaw (admin intelligence, memory, insights) |
+| Lightsail | Hosts OpenClaw + agent-bridge (seller channel, memory, insights) |
 | Bedrock | Claude for OpenClaw reasoning and AI Insights generation |
 | API Gateway | REST API for the Store API Lambda |
 | MySQL | Products, customers, orders, reviews, carts |
-| SES | Admin alert emails + inbound email routing |
+| SES | Customer order confirmation emails |
 | Secrets Manager | Database credentials |
 | CloudFront + S3 | Static web storefront and admin dashboard |
 | KMS | SNS topic encryption |
@@ -52,7 +53,9 @@ CloudFront serves the static site from S3, and the frontend calls the same Store
 
 **Two models, two jobs.** Nova Lite handles the commodity real-time work. Claude (via OpenClaw) handles strategic decisions where reasoning quality matters. This keeps costs low for customer traffic while preserving quality for admin actions.
 
-**SES for admin notifications.** Email gives the store owner a formal record. SES receipt rules route replies back into the system, so the admin never has to leave their inbox.
+**Telegram for the seller channel.** The store owner receives stock alerts, review escalations, and confirmation messages through a Telegram bot. Replies are processed by OpenClaw in real time. Telegram polling is more reliable than a WhatsApp linked device, which requires a QR-linked phone and breaks on gateway restarts.
+
+**SES for customer emails.** Order confirmations and shipping notifications go to customers via SES. Transactional email is the right channel for receipts — it's archivable and doesn't require the customer to interact.
 
 **Intentionally simple.** No ECS, no Fargate, no RDS Multi-AZ. Those make sense at scale but add complexity a solo store owner does not need.
 
@@ -80,13 +83,13 @@ If a customer adds items to cart on the web storefront but does not check out, a
 
 ### Stock alerts
 
-Every purchase triggers a background stock analysis. The system calculates daily sell rates and projects days until stockout. When items are out of stock, below 5 units, or predicted to run out within 7 days, the admin gets an email.
+Every purchase triggers a background stock analysis. The system calculates daily sell rates and projects days until stockout. When items are out of stock, below 5 units, or predicted to run out within 7 days, the store owner gets a Telegram alert.
 
 <img src="docs/mockup-email-stock.png" width="580" alt="Stock alert email">
 
 ### Review escalation
 
-Negative reviews trigger an escalation email with the customer's details, rating, and review text. The admin can reply directly to the email with instructions (e.g., "offer 20% discount"). OpenClaw processes the reply and follows up with the customer on WhatsApp.
+Negative reviews trigger a Telegram alert to the store owner with the customer's details, rating, and review text. The owner replies directly in Telegram with instructions (e.g., "apologize", "send refund"). OpenClaw processes the command and follows up with the customer on WhatsApp.
 
 <img src="docs/mockup-email-escalation.png" width="580" alt="Review escalation email">
 
@@ -157,10 +160,11 @@ npx cdk deploy                # save stack outputs
 After CDK finishes:
 
 1. **Database** - Run `scripts/schema.sql`, `scripts/schema_additions.sql`, and `scripts/seed_catalog.py` against your MySQL instance
-2. **Lightsail** - Install OpenClaw, copy `openclaw/` config to `~/.openclaw/`, start the agent bridge
+2. **Lightsail** - Install OpenClaw, copy `openclaw/` config to `~/.openclaw/`, add the Telegram bot channel, start the agent bridge
 3. **WhatsApp** - Link your WABA phone number to the SNS topic ARN in the EUM Social console
-4. **SES** - Activate receipt rules and verify your admin email
-5. **Validate** - `./scripts/validate-setup.sh`
+4. **Telegram** - Create a bot via BotFather, add it to OpenClaw with `openclaw channels add --channel telegram`, send `/start` to the bot from the seller's account
+5. **SES** - Verify your sender email for customer order confirmations
+6. **Validate** - `./scripts/validate-setup.sh`
 
 ---
 
