@@ -4,47 +4,24 @@
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
+
+        <!-- ═══ GROUP: Web Storefront ═══ -->
         <mxCell id="c-web" value="Web Storefront" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#147EBA;fillColor=#E6F2F8;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
           <mxGeometry x="10" y="40" width="260" height="150" as="geometry" />
         </mxCell>
-        <mxCell id="c-store" value="Store Backend" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#9C27B0;fillColor=#F3E5F5;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
-          <mxGeometry x="410" y="20" width="510" height="280" as="geometry" />
-        </mxCell>
-        <mxCell id="c-ai" value="Intelligence Layer (OpenClaw)" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#3F8FD2;fillColor=#E3F2FD;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
-          <mxGeometry x="40" y="340" width="280" height="190" as="geometry" />
-        </mxCell>
-        <mxCell id="c-chatbot" value="Customer Chatbot" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#01A88D;fillColor=#E0F7F1;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
-          <mxGeometry x="1130" y="320" width="210" height="240" as="geometry" />
-        </mxCell>
-        <mxCell id="bedrock-agent" value="Bedrock Agent&lt;br&gt;(Nova Lite)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#01A88D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;" parent="1" vertex="1">
-          <mxGeometry x="1200" y="370" width="60" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="c-msg" value="Messaging" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#7AA116;fillColor=#E8F5E9;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
-          <mxGeometry x="500" y="540" width="260" height="280" as="geometry" />
-        </mxCell>
-        <mxCell id="c-evt" value="Event Processing" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#E07D24;fillColor=#FFF3E0;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
-          <mxGeometry x="880" y="320" width="240" height="240" as="geometry" />
-        </mxCell>
-        <mxCell id="customer" value="Customer&lt;br&gt;(WhatsApp)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=none;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.users;" parent="1" vertex="1">
-          <mxGeometry x="50" y="590" width="60" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="owner" value="Store Owner&lt;br&gt;(Email)" style="outlineConnect=0;fontColor=default;gradientColor=none;fillColor=none;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.users;labelBackgroundColor=none;" parent="1" vertex="1">
-          <mxGeometry x="50" y="727.5" width="60" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="eum" value="End User Messaging Social&#xa;(WhatsApp)" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAspect=0;image=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAABQCAYAAACOEfKtAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAASxSURBVHgB7ZxPSFRBHMdH8y+rLCq7pocoD57q0h+wU0JX02vaUQxPJZkHE4yE9FCJ3SI9p1e1jobdhOjUrUhCYm0VE1lNk+3P+87ubE/ZP779zXszA/OBZSEeuX7e78185zezlny53PGXWYqmlFlIWIFErEAiViARK5CIFUjECiRiBRKxAolYgUSsQCJWIJEyVgRlTVEWfTjAKlpbWGltiOnIn8Qe23u3wranZ1kyFmd+UeK1GwN5zS8mWFlzlJlAcn2Dxfof+CbRcwXW3e7h8vY/fGTxocf8TusIbnTEeUqqL11gkdG7bN2R6Aeex8DQtTb+vjn2XFt5AJWHGwwqnaHGLzwLFGOen+OKLMQN9nOcLmoSMYnVKzeYn9gYQ0RaBZoQbbJBjTtSKlBEmypnxjNJHsDnre247nz+cSddNDKvSKlAEW1+fVrlcUHn2fk41LgjpQJFtIkPjRslD1DjjhSBJkWbbFDijp2FiRgjsJgBPgi0DtKY1ev7uo9Eo0NnokosLrHEmyUtxlttBdY54jC7CyALEiGzYbCFhXu6fO2ynBQtBbrlIeDuzM5nqg1VGR0d4LEJ2U21RO3GQOQyIW9rcoZtv3x15FE9cNpoa129vJ3Gr3Vkq0Q7gVgVgMTrJV55udh8NJW5XuXqRzuBWBEACMwHAjCqEFRdPM9UoZ1AUU0nmWGT66mx71RtDVOFdgKTsQ3+XtYUKXhteVMqG/5O7DJVaCcQDQkQar+a9zpMIFXpx/3w81emCu0E7swt8McXk4OYULLRcK+Pv2OstDHGBeQh+wG0mRBT3Ms4VB3yX6i9jU8k4lpVaBmkEV8wmYhAjRfGRvxbpvPj837vSdG2mYAAHXM1Z7HyEPLw2H67dUeL9pmWFQhR4ZudLNzdlTUkY2ysbD3nVOpCwbzoN9oJhDg8su7uCwKzqER0jSvSLz5GOteqfJS1EuhuImDN+8OZIA7Sq43j1DhVWN/Xo7ypoM0YKCoPoIkAIbnkgV3n0Y31D/PcmNoVHFfSdNVCIAQ0DKZyHeTlayK4wUyMXTQhEbtqQaOFQFF5hTow2cDYGL+fOiWGRoRYnQSFcoGoHMyq7gDtFVSiEB90f1C5wHB3J3/H8QrKJCCWgNUBn45QLlBsZlPzHORlGhHpjf4g8Czw/8pAzoxXkRZ4mP7lKYj/A8NCUHjOgRhrMOifmZ+RcvZOPG5n384xWZQHGGc8VyDfJUuPNzIQDVSZ7OfJj7IpaiWy9Wyav2SAHTaTsWdjiEgRGMRhbj8Rk04xw5IUgSI+RPiJAT0PAeUCNx1dHYAs6pUSGX83JqhvL2HFsdbZW/Cz4Ky21yVdsR1uKRWY+uHDPAz7eWKqUL5L7ZdMeJKHz4uuT7HtsBJT/nJRy/tF/p4re6IdJjo6EPI9oK+hGf9FG7H5hPY/QE7FfkpQGC0Qj3Tj0xG+nka1bU1OB75HYqxAjHOnn4zwClS5xWmkQPd4t7e8wjbHppQd9zVOIDKbOPIR9HiXDeMEiu71hlN1P5e9B1/ZGCdQlyMdAmMEooUGjp+ZVo0xQVpXbDuLiBVIxAokYgUSsQKJWIFErEAiViARK5CIFUjECiRiBRL5BxZMFQmKO6S1AAAAAElFTkSuQmCC;fontSize=11;fontColor=#232F3E;" parent="1" vertex="1">
-          <mxGeometry x="570" y="590" width="60" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="dispatcher" value="Dispatcher&lt;br&gt;Lambda" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#ED7100;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;" parent="1" vertex="1">
-          <mxGeometry x="1030" y="450" width="60" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="bedrock" value="Claude&lt;br&gt;(Bedrock)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#01A88D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;" parent="1" vertex="1">
-          <mxGeometry x="230" y="390" width="60" height="60" as="geometry" />
+        <mxCell id="s3" value="S3&lt;br&gt;(Static Site)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#3F8624;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;" parent="1" vertex="1">
+          <mxGeometry x="40" y="90" width="60" height="60" as="geometry" />
         </mxCell>
         <mxCell id="cf" value="CloudFront" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#8C4FFF;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudfront;" parent="1" vertex="1">
           <mxGeometry x="170" y="90" width="60" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="s3" value="S3&lt;br&gt;(Static Site)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#3F8624;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;" parent="1" vertex="1">
-          <mxGeometry x="40" y="90" width="60" height="60" as="geometry" />
+
+        <!-- ═══ GROUP: Store Backend ═══ -->
+        <mxCell id="c-store" value="Store Backend" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#9C27B0;fillColor=#F3E5F5;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
+          <mxGeometry x="410" y="20" width="510" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="apigw" value="API Gateway" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#E7157B;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;labelBackgroundColor=default;" parent="1" vertex="1">
+          <mxGeometry x="460" y="90" width="60" height="60" as="geometry" />
         </mxCell>
         <mxCell id="store-lambda" value="Store API&lt;br&gt;Lambda" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#ED7100;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;" parent="1" vertex="1">
           <mxGeometry x="580" y="90" width="60" height="60" as="geometry" />
@@ -52,57 +29,71 @@
         <mxCell id="secrets" value="Secrets&lt;br&gt;Manager" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#DD344C;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.secrets_manager;" parent="1" vertex="1">
           <mxGeometry x="800" y="40" width="60" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="db" value="MySQL" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#C925D1;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.rds;" parent="1" vertex="1">
+        <mxCell id="db" value="MySQL&lt;br&gt;(RDS)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#C925D1;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.rds;" parent="1" vertex="1">
           <mxGeometry x="760" y="190" width="60" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="e1" value="WhatsApp Messages" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=10;" parent="1" source="customer" target="eum" edge="1">
+
+        <!-- ═══ GROUP: Customer Channel (Bedrock) ═══ -->
+        <mxCell id="c-chatbot" value="Customer Channel (Bedrock Agent)" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#01A88D;fillColor=#E0F7F1;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
+          <mxGeometry x="1080" y="320" width="260" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="bedrock-agent" value="Bedrock Agent&lt;br&gt;(Nova Lite)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#01A88D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;" parent="1" vertex="1">
+          <mxGeometry x="1200" y="370" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ═══ GROUP: Messaging (WABA) ═══ -->
+        <mxCell id="c-msg" value="WhatsApp Business (WABA)" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#7AA116;fillColor=#E8F5E9;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
+          <mxGeometry x="500" y="500" width="260" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="eum" value="End User&lt;br&gt;Messaging Social&lt;br&gt;(EUMS)" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAspect=0;image=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAABQCAYAAACOEfKtAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAASxSURBVHgB7ZxPSFRBHMdH8y+rLCq7pocoD57q0h+wU0JX02vaUQxPJZkHE4yE9FCJ3SI9p1e1jobdhOjUrUhCYm0VE1lNk+3P+87ubE/ZP779zXszA/OBZSEeuX7e78185zezlny53PGXWYqmlFlIWIFErEAiViARK5CIFUjECiRiBRKxAolYgUSsQCJWIJEyVgRlTVEWfTjAKlpbWGltiOnIn8Qe23u3wranZ1kyFmd+UeK1GwN5zS8mWFlzlJlAcn2Dxfof+CbRcwXW3e7h8vY/fGTxocf8TusIbnTEeUqqL11gkdG7bN2R6Aeex8DQtTb+vjn2XFt5AJWHGwwqnaHGLzwLFGOen+OKLMQN9nOcLmoSMYnVKzeYn9gYQ0RaBZoQbbJBjTtSKlBEmypnxjNJHsDnre247nz+cSddNDKvSKlAEW1+fVrlcUHn2fk41LgjpQJFtIkPjRslD1DjjhSBJkWbbFDijp2FiRgjsJgBPgi0DtKY1ev7uo9Eo0NnokosLrHEmyUtxlttBdY54jC7CyALEiGzYbCFhXu6fO2ynBQtBbrlIeDuzM5nqg1VGR0d4LEJ2U21RO3GQOQyIW9rcoZtv3x15FE9cNpoa129vJ3Gr3Vkq0Q7gVgVgMTrJV55udh8NJW5XuXqRzuBWBEACMwHAjCqEFRdPM9UoZ1AUU0nmWGT66mx71RtDVOFdgKTsQ3+XtYUKXhteVMqG/5O7DJVaCcQDQkQar+a9zpMIFXpx/3w81emCu0E7swt8McXk4OYULLRcK+Pv2OstDHGBeQh+wG0mRBT3Ms4VB3yX6i9jU8k4lpVaBmkEV8wmYhAjRfGRvxbpvPj837vSdG2mYAAHXM1Z7HyEPLw2H67dUeL9pmWFQhR4ZudLNzdlTUkY2ysbD3nVOpCwbzoN9oJhDg8su7uCwKzqER0jSvSLz5GOteqfJS1EuhuImDN+8OZIA7Sq43j1DhVWN/Xo7ypoM0YKCoPoIkAIbnkgV3n0Y31D/PcmNoVHFfSdNVCIAQ0DKZyHeTlayK4wUyMXTQhEbtqQaOFQFF5hTow2cDYGL+fOiWGRoRYnQSFcoGoHMyq7gDtFVSiEB90f1C5wHB3J3/H8QrKJCCWgNUBn45QLlBsZlPzHORlGhHpjf4g8Czw/8pAzoxXkRZ4mP7lKYj/A8NCUHjOgRhrMOifmZ+RcvZOPG5n384xWZQHGGc8VyDfJUuPNzIQDVSZ7OfJj7IpaiWy9Wyav2SAHTaTsWdjiEgRGMRhbj8Rk04xw5IUgSI+RPiJAT0PAeUCNx1dHYAs6pUSGX83JqhvL2HFsdbZW/Cz4Ky21yVdsR1uKRWY+uHDPAz7eWKqUL5L7ZdMeJKHz4uuT7HtsBJT/nJRy/tF/p4re6IdJjo6EPI9oK+hGf9FG7H5hPY/QE7FfkpQGC0Qj3Tj0xG+nka1bU1OB75HYqxAjHOnn4zwClS5xWmkQPd4t7e8wjbHppQd9zVOIDKbOPIR9HiXDeMEiu71hlN1P5e9B1/ZGCdQlyMdAmMEooUGjp+ZVo0xQVpXbDuLiBVIxAokYgUSsQKJWIFErEAiViARK5CIFUjECiRiBRL5BxZMFQmKO6S1AAAAAElFTkSuQmCC;fontSize=11;fontColor=#232F3E;" parent="1" vertex="1">
+          <mxGeometry x="570" y="550" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ses" value="Simple Email&lt;br&gt;Service" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAspect=0;image=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAABQCAYAAACOEfKtAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAASxSURBVHgB7ZxPSFRBHMdH8y+rLCq7pocoD57q0h+wU0JX02vaUQxPJZkHE4yE9FCJ3SI9p1e1jobdhOjUrUhCYm0VE1lNk+3P+87ubE/ZP779zXszA/OBZSEeuX7e78185zezlny53PGXWYqmlFlIWIFErEAiViARK5CIFUjECiRiBRKxAolYgUSsQCJWIJEyVgRlTVEWfTjAKlpbWGltiOnIn8Qe23u3wranZ1kyFmd+UeK1GwN5zS8mWFlzlJlAcn2Dxfof+CbRcwXW3e7h8vY/fGTxocf8TusIbnTEeUqqL11gkdG7bN2R6Aeex8DQtTb+vjn2XFt5AJWHGwwqnaHGLzwLFGOen+OKLMQN9nOcLmoSMYnVKzeYn9gYQ0RaBZoQbbJBjTtSKlBEmypnxjNJHsDnre247nz+cSddNDKvSKlAEW1+fVrlcUHn2fk41LgjpQJFtIkPjRslD1DjjhSBJkWbbFDijp2FiRgjsJgBPgi0DtKY1ev7uo9Eo0NnokosLrHEmyUtxlttBdY54jC7CyALEiGzYbCFhXu6fO2ynBQtBbrlIeDuzM5nqg1VGR0d4LEJ2U21RO3GQOQyIW9rcoZtv3x15FE9cNpoa129vJ3Gr3Vkq0Q7gVgVgMTrJV55udh8NJW5XuXqRzuBWBEACMwHAjCqEFRdPM9UoZ1AUU0nmWGT66mx71RtDVOFdgKTsQ3+XtYUKXhteVMqG/5O7DJVaCcQDQkQar+a9zpMIFXpx/3w81emCu0E7swt8McXk4OYULLRcK+Pv2OstDHGBeQh+wG0mRBT3Ms4VB3yX6i9jU8k4lpVaBmkEV8wmYhAjRfGRvxbpvPj837vSdG2mYAAHXM1Z7HyEPLw2H67dUeL9pmWFQhR4ZudLNzdlTUkY2ysbD3nVOpCwbzoN9oJhDg8su7uCwKzqER0jSvSLz5GOteqfJS1EuhuImDN+8OZIA7Sq43j1DhVWN/Xo7ypoM0YKCoPoIkAIbnkgV3n0Y31D/PcmNoVHFfSdNVCIAQ0DKZyHeTlayK4wUyMXTQhEbtqQaOFQFF5hTow2cDYGL+fOiWGRoRYnQSFcoGoHMyq7gDtFVSiEB90f1C5wHB3J3/H8QrKJCCWgNUBn45QLlBsZlPzHORlGhHpjf4g8Czw/8pAzoxXkRZ4mP7lKYj/A8NCUHjOgRhrMOifmZ+RcvZOPG5n384xWZQHGGc8VyDfJUuPNzIQDVSZ7OfJj7IpaiWy9Wyav2SAHTaTsWdjiEgRGMRhbj8Rk04xw5IUgSI+RPiJAT0PAeUCNx1dHYAs6pUSGX83JqhvL2HFsdbZW/Cz4Ky21yVdsR1uKRWY+uHDPAz7eWKqUL5L7ZdMeJKHz4uuT7HtsBJT/nJRy/tF/p4re6IdJjo6EPI9oK+hGf9FG7H5hPY/QE7FfkpQGC0Qj3Tj0xG+nka1bU1OB75HYqxAjHOnn4zwClS5xWmkQPd4t7e8wjbHppQd9zVOIDKbOPIR9HiXDeMEiu71hlN1P5e9B1/ZGCdQlyMdAmMEooUGjp+ZVo0xQVpXbDuLiBVIxAokYgUSsQKJWIFErEAiViARK5CIFUjECiRiBRL5BxZMFQmKO6S1AAAAAElFTkSuQmCC;fontSize=11;fontColor=#232F3E;" parent="1" vertex="1">
+          <mxGeometry x="680" y="550" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ═══ GROUP: Event Processing ═══ -->
+        <mxCell id="c-evt" value="Event Processing" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#E07D24;fillColor=#FFF3E0;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
+          <mxGeometry x="880" y="320" width="200" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="sns" value="SNS" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#E7157B;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.sns;labelBackgroundColor=default;" parent="1" vertex="1">
+          <mxGeometry x="920" y="360" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dispatcher" value="Dispatcher&lt;br&gt;Lambda" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#ED7100;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;" parent="1" vertex="1">
+          <mxGeometry x="920" y="470" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ═══ GROUP: Seller Channel (OpenClaw + Telegram) ═══ -->
+        <mxCell id="c-ai" value="Seller Channel (OpenClaw + Telegram)" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#0088CC;fillColor=#E3F2FD;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
+          <mxGeometry x="10" y="340" width="340" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="openclaw" value="OpenClaw&lt;br&gt;(Lightsail)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#ED7100;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lightsail;labelBackgroundColor=default;" parent="1" vertex="1">
+          <mxGeometry x="50" y="400" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="bedrock" value="Claude Sonnet&lt;br&gt;(Bedrock)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#01A88D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;" parent="1" vertex="1">
+          <mxGeometry x="200" y="400" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="telegram-icon" value="Telegram&lt;br&gt;Bot" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAspect=0;image=https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg;fontSize=11;fontColor=#0088CC;" parent="1" vertex="1">
+          <mxGeometry x="50" y="590" width="48" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="bridge" value="Agent&lt;br&gt;Bridge" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#ED7100;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lightsail;labelBackgroundColor=default;" parent="1" vertex="1">
+          <mxGeometry x="200" y="590" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- ═══ ACTORS ═══ -->
+        <mxCell id="customer" value="Customer&lt;br&gt;(WhatsApp)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=none;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.users;" parent="1" vertex="1">
+          <mxGeometry x="570" y="780" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="owner" value="Store Owner&lt;br&gt;(Telegram)" style="outlineConnect=0;fontColor=default;gradientColor=none;fillColor=none;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.users;labelBackgroundColor=none;" parent="1" vertex="1">
+          <mxGeometry x="50" y="730" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ═══ EDGES: Web → Store Backend ═══ -->
+        <mxCell id="e16" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;" parent="1" source="cf" target="s3" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;" parent="1" source="eum" target="sns" edge="1">
+        <mxCell id="e18" value="API" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=10;" parent="1" source="cf" target="apigw" edge="1">
           <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;" parent="1" source="sns" target="dispatcher" edge="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e4" value="WhatsApp messages" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=10;" parent="1" source="dispatcher" target="bedrock-agent" edge="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e4b" value="async log" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#7B68EE;strokeWidth=1.5;fontSize=10;fontColor=#7B68EE;" parent="1" source="bedrock-agent" target="openclaw" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="1230" y="550" />
-              <mxPoint x="380" y="550" />
-              <mxPoint x="380" y="420" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e5" value="reasoning +&lt;br&gt;AI Insights" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=10;" parent="1" source="openclaw" target="bedrock" edge="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e4c" value="email inbound" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#FF6D00;strokeWidth=1.5;fontSize=10;fontColor=#FF6D00;" parent="1" source="dispatcher" target="openclaw" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="1060" y="420" />
-              <mxPoint x="400" y="420" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e6" value="reply" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#4a86c8;strokeWidth=1.5;fontSize=10;fontColor=#4a86c8;" parent="1" source="bedrock-agent" target="eum" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="1230" y="600" />
-              <mxPoint x="600" y="600" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e8" value="tool calls" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=10;" parent="1" source="bedrock-agent" target="apigw" edge="1">
-          <mxGeometry y="-10" relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="1230" y="270" />
-              <mxPoint x="490" y="270" />
-            </Array>
-            <mxPoint as="offset" />
-          </mxGeometry>
         </mxCell>
         <mxCell id="e9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;" parent="1" source="apigw" target="store-lambda" edge="1">
           <mxGeometry relative="1" as="geometry" />
@@ -115,52 +106,131 @@
         <mxCell id="e11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;" parent="1" source="store-lambda" target="secrets" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e13" value="Emails" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=10;startArrow=classic;startFill=1;" parent="1" target="owner" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="570" y="760" as="sourcePoint" />
-          </mxGeometry>
+
+        <!-- ═══ EDGES: Customer WhatsApp → EUMS → SNS → Dispatcher → Bedrock Agent ═══ -->
+        <mxCell id="e1" value="WhatsApp Messages" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=10;" parent="1" source="customer" target="eum" edge="1">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e15" value="inbound" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#FF6D00;strokeWidth=1.5;fontSize=10;fontColor=#FF6D00;" parent="1" target="sns" edge="1">
+        <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;" parent="1" source="eum" target="sns" edge="1">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="630" y="760.0588235294117" as="sourcePoint" />
             <Array as="points">
-              <mxPoint x="830" y="760" />
-              <mxPoint x="830" y="390" />
+              <mxPoint x="600" y="500" />
+              <mxPoint x="850" y="500" />
+              <mxPoint x="850" y="390" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e16" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;" parent="1" source="cf" target="s3" edge="1">
+        <mxCell id="e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;" parent="1" source="sns" target="dispatcher" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e18" value="API" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=10;" parent="1" source="cf" target="apigw" edge="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="nzbWEEhFBKnFom7ncG4M-4" value="Simple Email Service" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAspect=0;image=data:image/png,iVBORw0KGgoAAAANSUhEUgAAAFAAAABQCAYAAACOEfKtAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAASxSURBVHgB7ZxPSFRBHMdH8y+rLCq7pocoD57q0h+wU0JX02vaUQxPJZkHE4yE9FCJ3SI9p1e1jobdhOjUrUhCYm0VE1lNk+3P+87ubE/ZP779zXszA/OBZSEeuX7e78185zezlny53PGXWYqmlFlIWIFErEAiViARK5CIFUjECiRiBRKxAolYgUSsQCJWIJEyVgRlTVEWfTjAKlpbWGltiOnIn8Qe23u3wranZ1kyFmd+UeK1GwN5zS8mWFlzlJlAcn2Dxfof+CbRcwXW3e7h8vY/fGTxocf8TusIbnTEeUqqL11gkdG7bN2R6Aeex8DQtTb+vjn2XFt5AJWHGwwqnaHGLzwLFGOen+OKLMQN9nOcLmoSMYnVKzeYn9gYQ0RaBZoQbbJBjTtSKlBEmypnxjNJHsDnre247nz+cSddNDKvSKlAEW1+fVrlcUHn2fk41LgjpQJFtIkPjRslD1DjjhSBJkWbbFDijp2FiRgjsJgBPgi0DtKY1ev7uo9Eo0NnokosLrHEmyUtxlttBdY54jC7CyALEiGzYbCFhXu6fO2ynBQtBbrlIeDuzM5nqg1VGR0d4LEJ2U21RO3GQOQyIW9rcoZtv3x15FE9cNpoa129vJ3Gr3Vkq0Q7gVgVgMTrJV55udh8NJW5XuXqRzuBWBEACMwHAjCqEFRdPM9UoZ1AUU0nmWGT66mx71RtDVOFdgKTsQ3+XtYUKXhteVMqG/5O7DJVaCcQDQkQar+a9zpMIFXpx/3w81emCu0E7swt8McXk4OYULLRcK+Pv2OstDHGBeQh+wG0mRBT3Ms4VB3yX6i9jU8k4lpVaBmkEV8wmYhAjRfGRvxbpvPj837vSdG2mYAAHXM1Z7HyEPLw2H67dUeL9pmWFQhR4ZudLNzdlTUkY2ysbD3nVOpCwbzoN9oJhDg8su7uCwKzqER0jSvSLz5GOteqfJS1EuhuImDN+8OZIA7Sq43j1DhVWN/Xo7ypoM0YKCoPoIkAIbnkgV3n0Y31D/PcmNoVHFfSdNVCIAQ0DKZyHeTlayK4wUyMXTQhEbtqQaOFQFF5hTow2cDYGL+fOiWGRoRYnQSFcoGoHMyq7gDtFVSiEB90f1C5wHB3J3/H8QrKJCCWgNUBn45QLlBsZlPzHORlGhHpjf4g8Czw/8pAzoxXkRZ4mP7lKYj/A8NCUHjOgRhrMOifmZ+RcvZOPG5n384xWZQHGGc8VyDfJUuPNzIQDVSZ7OfJj7IpaiWy9Wyav2SAHTaTsWdjiEgRGMRhbj8Rk04xw5IUgSI+RPiJAT0PAeUCNx1dHYAs6pUSGX83JqhvL2HFsdbZW/Cz4Ky21yVdsR1uKRWY+uHDPAz7eWKqUL5L7ZdMeJKHz4uuT7HtsBJT/nJRy/tF/p4re6IdJjo6EPI9oK+hGf9FG7H5hPY/QE7FfkpQGC0Qj3Tj0xG+nka1bU1OB75HYqxAjHOnn4zwClS5xWmkQPd4t7e8wjbHppQd9zVOIDKbOPIR9HiXDeMEiu71hlN1P5e9B1/ZGCdQlyMdAmMEooUGjp+ZVo0xQVpXbDuLiBVIxAokYgUSsQKJWIFErEAiViARK5CIFUjECiRiBRL5BxZMFQmKO6S1AAAAAElFTkSuQmCC;" vertex="1" parent="1">
-          <mxGeometry x="570" y="730" width="55" height="55" as="geometry" />
-        </mxCell>
-        <mxCell id="nzbWEEhFBKnFom7ncG4M-3" value="" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAspect=0;image=data:image/png,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;" vertex="1" parent="1">
-          <mxGeometry x="575" y="595" width="50" height="50" as="geometry" />
-        </mxCell>
-        <mxCell id="apigw" value="API Gateway" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#E7157B;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;labelBackgroundColor=default;" parent="1" vertex="1">
-          <mxGeometry x="460" y="90" width="60" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="sns" value="SNS" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#E7157B;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.sns;labelBackgroundColor=default;" parent="1" vertex="1">
-          <mxGeometry x="930" y="360" width="60" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="e12" value="alerts / escalations" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=10;" parent="1" source="openclaw" edge="1">
-          <mxGeometry x="-0.1397" relative="1" as="geometry">
-            <mxPoint x="600.0588235294117" y="730" as="targetPoint" />
+        <mxCell id="e4" value="customer messages" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=10;" parent="1" source="dispatcher" target="bedrock-agent" edge="1">
+          <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="100" y="370" />
-              <mxPoint x="430" y="370" />
-              <mxPoint x="430" y="730" />
+              <mxPoint x="950" y="540" />
+              <mxPoint x="1050" y="540" />
+              <mxPoint x="1050" y="400" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Bedrock Agent reply → EUMS → Customer -->
+        <mxCell id="e6" value="reply via EUMS" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#4a86c8;strokeWidth=1.5;fontSize=10;fontColor=#4a86c8;" parent="1" source="bedrock-agent" target="eum" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1230" y="570" />
+              <mxPoint x="600" y="570" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Bedrock Agent → Store API (tool calls) -->
+        <mxCell id="e8" value="tool calls" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=10;" parent="1" source="bedrock-agent" target="apigw" edge="1">
+          <mxGeometry y="-10" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1230" y="270" />
+              <mxPoint x="490" y="270" />
             </Array>
             <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="openclaw" value="OpenClaw&lt;br&gt;(Lightsail)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#ED7100;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lightsail;labelBackgroundColor=default;" parent="1" vertex="1">
-          <mxGeometry x="80" y="390" width="60" height="60" as="geometry" />
+
+        <!-- Store API → SES (order confirmation emails) -->
+        <mxCell id="e-ses" value="order emails" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#999999;strokeWidth=1.5;fontSize=10;fontColor=#999999;" parent="1" source="store-lambda" target="ses" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="610" y="220" />
+              <mxPoint x="710" y="220" />
+              <mxPoint x="710" y="580" />
+            </Array>
+          </mxGeometry>
         </mxCell>
+
+        <!-- Store API → EUMS (customer surveys) -->
+        <mxCell id="e-survey" value="post-purchase&lt;br&gt;surveys" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#7AA116;strokeWidth=1.5;fontSize=10;fontColor=#7AA116;" parent="1" source="store-lambda" target="eum" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="610" y="240" />
+              <mxPoint x="740" y="240" />
+              <mxPoint x="740" y="660" />
+              <mxPoint x="600" y="660" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ═══ EDGES: Seller Channel (OpenClaw + Telegram) ═══ -->
+
+        <!-- Owner ↔ OpenClaw via Telegram Bot -->
+        <mxCell id="e-telegram" value="Telegram Bot DM" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=10;strokeColor=#0088CC;fontColor=#0088CC;startArrow=classic;startFill=1;" parent="1" source="owner" target="telegram-icon" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Telegram Bot → OpenClaw (inbound processing) -->
+        <mxCell id="e-tg-oc" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#0088CC;" parent="1" source="telegram-icon" target="openclaw" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- OpenClaw → Claude Sonnet (reasoning) -->
+        <mxCell id="e5" value="reasoning +&lt;br&gt;tool use" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=10;" parent="1" source="openclaw" target="bedrock" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- OpenClaw tools → Store API -->
+        <mxCell id="e-tools" value="tools (HTTP)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=10;strokeColor=#0088CC;fontColor=#0088CC;" parent="1" source="openclaw" target="apigw" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="80" y="370" />
+              <mxPoint x="400" y="370" />
+              <mxPoint x="400" y="120" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Store API → Agent Bridge (notifications) -->
+        <mxCell id="e-notify" value="stock alerts,&lt;br&gt;review alerts" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=10;strokeColor=#FF6D00;fontColor=#FF6D00;" parent="1" source="store-lambda" target="bridge" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="610" y="200" />
+              <mxPoint x="380" y="200" />
+              <mxPoint x="380" y="614" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Agent Bridge → OpenClaw → Telegram (notification delivery) -->
+        <mxCell id="e-bridge" value="openclaw message&lt;br&gt;send --channel telegram" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#FF6D00;fontColor=#FF6D00;" parent="1" source="bridge" target="telegram-icon" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Telegram Bot → Owner (notifications delivered) -->
+        <mxCell id="e-notify-deliver" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeWidth=1.5;strokeColor=#FF6D00;" parent="1" source="telegram-icon" target="owner" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="74" y="700" />
+              <mxPoint x="80" y="700" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
       </root>
     </mxGraphModel>
   </diagram>

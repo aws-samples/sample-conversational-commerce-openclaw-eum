@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 """
 escalate_to_human.py - Flag a customer conversation for human review and
-                        notify the seller via WhatsApp and/or email.
+                        notify the seller via Telegram and/or email.
 
 Calls the Store API to persist the escalation record, then sends
-notifications via AWS EUMS (WhatsApp) and SES (email).
+notifications via the OpenClaw agent-bridge (Telegram) and SES (email).
 
 Required environment variables:
     STORE_API_URL                                (Store API base URL)
-    SELLER_PHONE                                 (E.164 WhatsApp number for the store owner)
-    WHATSAPP_PHONE_NUMBER_ID                     (EUMS origination phone number ID)
-    AWS_REGION                                   (AWS region for EUMS)
+    OPENCLAW_BRIDGE_URL                          (agent-bridge URL, e.g. http://localhost:18790)
+    OPENCLAW_BRIDGE_TOKEN                        (auth token for agent-bridge)
 
 Optional environment variables:
     STORE_API_KEY          API key for Store API authentication
@@ -42,40 +41,34 @@ from _api import api_post
 
 
 # ---------------------------------------------------------------------------
-# WhatsApp helper
+# Telegram helper (via agent-bridge)
 # ---------------------------------------------------------------------------
 
-def _send_whatsapp_text(to: str, body: str) -> bool:
+def _send_telegram_alert(body: str) -> bool:
     """
-    Send a plain-text WhatsApp message to the seller via AWS EUMS.
+    Send a plain-text alert to the seller via the OpenClaw agent-bridge,
+    which delivers it through Telegram.
     Returns True on success, False on any error.
     """
-    phone_number_id = os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "").strip()
-    if not phone_number_id:
+    bridge_url = os.environ.get("OPENCLAW_BRIDGE_URL", "").strip()
+    bridge_token = os.environ.get("OPENCLAW_BRIDGE_TOKEN", "").strip()
+    if not bridge_url:
         return False
 
-    try:
-        import boto3
-    except ImportError:
-        return False
-
-    region = os.environ.get("AWS_REGION", "us-east-1")
-    payload = {
-        "messaging_product": "whatsapp",
-        "recipient_type": "individual",
-        "to": to,
-        "type": "text",
-        "text": {"preview_url": False, "body": body},
-    }
+    import urllib.request
 
     try:
-        client = boto3.client("socialmessaging", region_name=region)
-        client.send_whatsapp_message(
-            originationPhoneNumberId=phone_number_id,
-            message=json.dumps(payload).encode("utf-8"),
-            metaApiVersion="v21.0",
+        req = urllib.request.Request(
+            f"{bridge_url}/notify",
+            data=json.dumps({"message": body}).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {bridge_token}",
+            },
+            method="POST",
         )
-        return True
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return resp.status == 200
     except Exception:
         return False
 
@@ -187,20 +180,16 @@ def escalate_to_human(
     if not summary:
         raise ValueError("summary must not be empty")
 
-    seller_phone = os.environ.get("SELLER_PHONE", "").strip()
-    if not seller_phone:
-        raise EnvironmentError("Missing required environment variable: SELLER_PHONE")
-
-    # ---- Notify seller via WhatsApp ----
+    # ---- Notify seller via Telegram (agent-bridge) ----
     seller_name = os.environ.get("SELLER_NAME", "Store Owner")
-    whatsapp_body = (
+    telegram_body = (
         f"[Claw Boutique - Escalation Alert]\n\n"
         f"A customer needs your attention.\n"
         f"Customer: {customer_phone}\n"
         f"Reason: {reason}\n\n"
         f"Summary:\n{summary}"
     )
-    wa_ok = _send_whatsapp_text(seller_phone, whatsapp_body)
+    tg_ok = _send_telegram_alert(telegram_body)
 
     # ---- Optionally notify via email ----
     seller_email = os.environ.get("SELLER_EMAIL", "").strip()
@@ -214,7 +203,7 @@ def escalate_to_human(
             summary=summary,
         )
 
-    seller_notified = wa_ok or email_ok
+    seller_notified = tg_ok or email_ok
 
     # ---- Persist escalation record via Store API ----
     api_result = api_post("/api/escalations", {

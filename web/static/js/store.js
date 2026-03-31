@@ -465,6 +465,9 @@ async function submitOrder(event) {
   const btn = document.getElementById('place-order-btn');
   const errorEl = document.getElementById('checkout-error');
 
+  // Prevent double-clicks
+  if (btn.disabled) return;
+
   const name = form.customer_name.value.trim();
   const email = form.customer_email.value.trim();
   const phone = form.customer_phone.value.trim();
@@ -478,7 +481,7 @@ async function submitOrder(event) {
 
   errorEl.classList.add('hidden');
   btn.disabled = true;
-  btn.textContent = 'Placing order…';
+  btn.textContent = 'Placing Order…';
 
   const body = {
     customer_name: name,
@@ -598,18 +601,8 @@ function clearAbandonmentTimer() {
 }
 
 function triggerAbandonmentRecovery() {
-  const phone = localStorage.getItem('cb_customer_phone') || '';
-  if (!phone || cart.length === 0) return;
-  fetch(`${API_BASE}/api/carts/notify-abandoned`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      customer_phone: phone,
-      items: cart.map(i => ({ name: i.name, product_id: i.product_id })),
-    }),
-  }).then(() => {
-    console.log('Abandonment recovery message sent');
-  }).catch(() => {});
+  // Cart recovery is handled by OpenClaw via the recover_cart tool,
+  // not auto-triggered from the storefront.
 }
 
 // ---------------------------------------------------------------------------

@@ -111,30 +111,34 @@ def _not_found(resource: str = "Resource"):
 # Async notification helpers (fire-and-forget, never block API response)
 # ---------------------------------------------------------------------------
 
-def _send_admin_email(subject: str, html_body: str, text_body: str):
-    """Send an email to the seller/admin via SES."""
-    from_email = os.environ.get("SES_FROM_EMAIL", "")
-    seller_email = os.environ.get("SELLER_EMAIL", "")
-    if not from_email or not seller_email:
-        logger.warning("SES_FROM_EMAIL or SELLER_EMAIL not set, skipping email")
+def _notify_seller(text: str):
+    """Send a notification to the seller via the OpenClaw agent-bridge (Telegram).
+
+    Posts to the agent-bridge on Lightsail, which uses OpenClaw's Telegram
+    channel to deliver the message to the seller's Telegram chat.
+    The seller can then reply via Telegram and OpenClaw processes commands.
+    """
+    bridge_url = os.environ.get("OPENCLAW_BRIDGE_URL", "")
+    bridge_token = os.environ.get("OPENCLAW_BRIDGE_TOKEN", "")
+    if not bridge_url:
+        logger.warning("OPENCLAW_BRIDGE_URL not set, skipping seller notification")
         return
+
     try:
-        ses = boto3.client("ses", region_name=os.environ.get("AWS_REGION", "us-east-1"))
-        ses.send_email(
-            Source=from_email,
-            Destination={"ToAddresses": [seller_email]},
-            ReplyToAddresses=[from_email],
-            Message={
-                "Subject": {"Data": subject, "Charset": "UTF-8"},
-                "Body": {
-                    "Text": {"Data": text_body, "Charset": "UTF-8"},
-                    "Html": {"Data": html_body, "Charset": "UTF-8"},
-                },
+        import urllib.request
+        req = urllib.request.Request(
+            f"{bridge_url}/notify",
+            data=json.dumps({"message": text}).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {bridge_token}",
             },
+            method="POST",
         )
-        logger.info("Admin email sent: %s -> %s", subject, seller_email)
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            logger.info("Seller notification sent via OpenClaw bridge (Telegram): %s", resp.status)
     except Exception:
-        logger.exception("Failed to send admin email: %s", subject)
+        logger.exception("OpenClaw bridge notify failed")
 
 
 def _send_whatsapp(phone: str, text: str):
@@ -186,7 +190,8 @@ def _send_order_survey(phone: str, name: str, order_id: int, item_names: list[st
 
 
 def _check_stock_and_alert(product_ids: list[int]):
-    """After an order, check if any purchased products are now low stock and email admin."""
+    """After an order, check if any purchased products are low stock and
+    notify the seller via Telegram."""
     try:
         with get_db() as conn:
             with _cursor(conn) as cur:
@@ -205,7 +210,7 @@ def _check_stock_and_alert(product_ids: list[int]):
                 )
                 rows = cur.fetchall()
 
-        alerts = []
+        lines = []
         for r in rows:
             stock = int(r["stock_qty"])
             sold = int(r["units_sold_30d"])
@@ -216,48 +221,27 @@ def _check_stock_and_alert(product_ids: list[int]):
                 days_left = 0 if stock == 0 else None
 
             if stock == 0:
-                alerts.append(f"OUT OF STOCK: {r['name']} ({r['category']}, {r['size']}, {r['color']})")
+                lines.append(f"OUT OF STOCK: {r['name']}")
             elif days_left is not None and days_left <= 7:
                 reorder = max(0, round(daily_rate * 30 - stock))
-                alerts.append(
-                    f"LOW STOCK: {r['name']} — {stock} units left, "
-                    f"~{days_left} days until stockout at current rate "
-                    f"({daily_rate:.1f}/day). Suggest reorder: {reorder} units."
+                lines.append(
+                    f"LOW STOCK: {r['name']} - {stock} left, "
+                    f"~{days_left} days at {daily_rate:.1f}/day. "
+                    f"Suggest reorder: {reorder}"
                 )
             elif stock <= 5:
-                alerts.append(f"LOW STOCK: {r['name']} — only {stock} units remaining")
+                lines.append(f"LOW STOCK: {r['name']} - only {stock} units")
 
-        # Always send a stock report after a purchase (for demo visibility)
-        if not alerts:
-            for r in rows:
-                stock = int(r["stock_qty"])
-                sold = int(r["units_sold_30d"])
-                daily_rate = sold / 30.0 if sold > 0 else 0
-                alerts.append(
-                    f"OK: {r['name']} — {stock} units in stock"
-                    + (f" ({daily_rate:.1f}/day sell rate)" if daily_rate > 0 else "")
-                )
+        if not lines:
+            return  # stock is healthy, no alert needed
 
-        alert_text = "\n\n".join(alerts)
-        has_issues = any(a.startswith("OUT OF STOCK") or a.startswith("LOW STOCK") for a in alerts)
-        if has_issues:
-            subject = f"[Claw Boutique] Stock Alert: {sum(1 for a in alerts if not a.startswith('OK'))} item(s) need attention"
-        else:
-            subject = f"[Claw Boutique] Stock Report: {len(rows)} item(s) after purchase"
-
-        color_map = {"OUT OF STOCK": ("#fde8e8", "#e53e3e", "red"), "LOW STOCK": ("#fff3cd", "#ffc107", "amber"), "OK": ("#e8f5e9", "#38a169", "green")}
-        def _alert_box(a):
-            key = a.split(":")[0]
-            bg, border, _ = color_map.get(key, ("#f0f0f0", "#ccc", "grey"))
-            return f'<div style="background:{bg};border:1px solid {border};border-radius:8px;padding:12px;margin:8px 0"><strong>{key}</strong>: {":".join(a.split(":")[1:])}</div>'
-
-        html = f"""<html><body style="font-family:sans-serif;color:#333;max-width:600px;margin:auto;padding:20px">
-<h2 style="color:{'#c0392b' if has_issues else '#38a169'}">Claw Boutique — {'Stock Alert' if has_issues else 'Stock Report'}</h2>
-<p>{'The following items need your attention after a recent purchase:' if has_issues else 'Stock levels after a recent purchase:'}</p>
-{"".join(_alert_box(a) for a in alerts)}
-<p style="margin-top:20px;color:#888;font-size:12px">Automated alert from Claw Boutique AI</p>
-</body></html>"""
-        _send_admin_email(subject, html, f"Stock Report\n\n{alert_text}")
+        msg = (
+            "[Claw Boutique - Stock Alert]\n\n"
+            + "\n".join(lines)
+            + "\n\nReply 'restock <product>' to reorder, "
+            "or ask me anything about inventory."
+        )
+        _notify_seller(msg)
     except Exception:
         logger.exception("Stock check failed")
 
@@ -1061,18 +1045,11 @@ def admin_email_action():
             logger.exception("admin restock error")
             return _err(str(exc), 500)
 
-        # Send confirmation email
-        subject = f"[Claw Boutique] Restock Confirmed: {product['name']}"
-        html = f"""<html><body style="font-family:sans-serif;color:#333;max-width:600px;margin:auto;padding:20px">
-<h2 style="color:#38a169">Claw Boutique — Restock Confirmed</h2>
-<p>Your restock request has been processed:</p>
-<div style="background:#e8f5e9;border:1px solid #38a169;border-radius:8px;padding:12px;margin:8px 0">
-<strong>{product['name']}</strong> — added {qty} units (new total: {new_stock})
-</div>
-<p style="margin-top:20px;color:#888;font-size:12px">Automated confirmation from Claw Boutique AI</p>
-</body></html>"""
-        text = f"Restock Confirmed: {product['name']} — added {qty} units (new total: {new_stock})"
-        _send_admin_email(subject, html, text)
+        # Confirm to seller via Telegram
+        _notify_seller(
+            f"Restock confirmed: {product['name']} - "
+            f"added {qty} units (new total: {new_stock})"
+        )
 
         return jsonify({
             "action": "restock",
@@ -1121,20 +1098,12 @@ def admin_email_action():
         except Exception:
             logger.exception("Failed to resolve escalation for %s", phone)
 
-        # Send confirmation email
+        # Confirm to seller via Telegram
         display = f"{customer_name} ({phone})" if customer_name else phone
-        subject = f"[Claw Boutique] Apology & Refund Sent to {display}"
-        html = f"""<html><body style="font-family:sans-serif;color:#333;max-width:600px;margin:auto;padding:20px">
-<h2 style="color:#38a169">Claw Boutique — Action Confirmed</h2>
-<p>Your request has been processed:</p>
-<div style="background:#e8f5e9;border:1px solid #38a169;border-radius:8px;padding:12px;margin:8px 0">
-<strong>Apology &amp; refund sent via WhatsApp</strong> to {display}
-</div>
-{f'<p>Escalation #{resolved_id} has been marked as resolved.</p>' if resolved_id else ''}
-<p style="margin-top:20px;color:#888;font-size:12px">Automated confirmation from Claw Boutique AI</p>
-</body></html>"""
-        text = f"Apology & refund sent via WhatsApp to {display}" + (f". Escalation #{resolved_id} resolved." if resolved_id else "")
-        _send_admin_email(subject, html, text)
+        _notify_seller(
+            f"Apology & refund sent to {display}."
+            + (f" Escalation #{resolved_id} resolved." if resolved_id else "")
+        )
 
         return jsonify({
             "action": "send_apology",
@@ -1145,6 +1114,30 @@ def admin_email_action():
 
     else:
         return _err(f"Unknown action: '{action}'. Expected 'restock' or 'send_apology'.")
+
+
+# ---------------------------------------------------------------------------
+# Customer lookup
+# ---------------------------------------------------------------------------
+
+@app.route("/api/customers", methods=["GET"])
+def list_customers():
+    """Look up customers by name (partial match)."""
+    name = request.args.get("name", "").strip()
+    if not name:
+        return _err("name query parameter is required")
+    try:
+        with get_db() as conn:
+            with _cursor(conn) as cur:
+                cur.execute(
+                    "SELECT id, name, phone, email FROM customers WHERE name LIKE %s LIMIT 5",
+                    (f"%{name}%",),
+                )
+                rows = cur.fetchall()
+    except Exception as exc:
+        logger.exception("list_customers error")
+        return _err(str(exc), 500)
+    return jsonify([dict(r) for r in rows])
 
 
 # ---------------------------------------------------------------------------
@@ -1334,30 +1327,14 @@ def create_review():
         action = "follow_up"
     else:
         action = "escalate"
-        # Send escalation email to admin for low ratings
-        subject = f"[Claw Boutique] Negative Review Alert — {rating} star from {data['customer_name']}"
-        html = f"""<html><body style="font-family:sans-serif;color:#333;max-width:600px;margin:auto;padding:20px">
-<h2 style="color:#c0392b">Claw Boutique — Negative Review Alert</h2>
-<p>A customer has left a <strong>{rating}-star review</strong> that requires your attention.</p>
-<table style="width:100%;border-collapse:collapse">
-  <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Customer</strong></td>
-      <td style="padding:8px;border-bottom:1px solid #eee">{data['customer_name']} ({data['customer_phone']})</td></tr>
-  <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Rating</strong></td>
-      <td style="padding:8px;border-bottom:1px solid #eee">{"&#11088;" * rating}{"&#9734;" * (5-rating)} ({rating}/5)</td></tr>
-  <tr><td style="padding:8px"><strong>Review</strong></td>
-      <td style="padding:8px">{data['review_text']}</td></tr>
-</table>
-<p style="margin-top:20px;color:#c0392b;font-weight:bold">Please follow up with this customer as soon as possible.</p>
-<p style="color:#888;font-size:12px">Automated alert from Claw Boutique AI</p>
-</body></html>"""
-        text = (
-            f"Negative Review Alert\n\n"
-            f"Customer: {data['customer_name']} ({data['customer_phone']})\n"
-            f"Rating: {rating}/5\n"
+        msg = (
+            f"[Claw Boutique - Review Alert]\n\n"
+            f"{'*' * rating} ({rating}/5) from {data['customer_name']}\n"
+            f"Phone: {data['customer_phone']}\n"
             f"Review: {data['review_text']}\n\n"
-            f"Please follow up with this customer."
+            f"Reply 'apologize' to send apology + refund to this customer."
         )
-        _send_admin_email(subject, html, text)
+        _notify_seller(msg)
 
     return jsonify({
         "review_id": review_id,
@@ -1432,28 +1409,14 @@ def create_review_from_whatsapp():
     action = "auto_thank" if rating >= 4 else "follow_up" if rating == 3 else "escalate"
 
     if action == "escalate":
-        subject = f"[Claw Boutique] Negative Review Alert: {rating} star from {customer_name}"
-        html = f"""<html><body style="font-family:sans-serif;color:#333;max-width:600px;margin:auto;padding:20px">
-<h2 style="color:#c0392b">Claw Boutique: Negative Review Alert</h2>
-<p>A customer has left a <strong>{rating}-star review</strong> via WhatsApp that requires your attention.</p>
-<table style="width:100%;border-collapse:collapse">
-  <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Customer</strong></td>
-      <td style="padding:8px;border-bottom:1px solid #eee">{customer_name} ({phone})</td></tr>
-  <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Rating</strong></td>
-      <td style="padding:8px;border-bottom:1px solid #eee">{"&#11088;" * rating}{"&#9734;" * (5-rating)} ({rating}/5)</td></tr>
-  <tr><td style="padding:8px"><strong>Review</strong></td>
-      <td style="padding:8px">{review_text}</td></tr>
-</table>
-<p style="margin-top:20px;color:#c0392b;font-weight:bold">Please follow up with this customer as soon as possible.</p>
-</body></html>"""
-        text = (
-            f"Negative Review Alert\n\n"
-            f"Customer: {customer_name} ({phone})\n"
-            f"Rating: {rating}/5\n"
+        msg = (
+            f"[Claw Boutique - Review Alert]\n\n"
+            f"{'*' * rating} ({rating}/5) from {customer_name}\n"
+            f"Phone: {phone}\n"
             f"Review: {review_text}\n\n"
-            f"Please follow up with this customer."
+            f"Reply 'apologize' to send apology + refund to this customer."
         )
-        _send_admin_email(subject, html, text)
+        _notify_seller(msg)
 
         # Also create an escalation so it appears on the dashboard
         try:

@@ -58,23 +58,24 @@ openclaw/
 
 ---
 
-## 2. Connect the Seller's Personal WhatsApp (Linked Devices QR)
+## 2. Connect the Seller's Telegram Bot
 
-OpenClaw connects to the seller's personal WhatsApp number via the WhatsApp Web multi-device protocol. This allows the seller to send operational commands directly from their phone.
+OpenClaw connects to the seller via a Telegram bot. This allows the seller to receive alerts and send operational commands directly from Telegram.
 
-1. After the gateway starts, run:
+1. Create a bot via BotFather and note the token.
+2. Add the Telegram channel to OpenClaw:
    ```
-   openclaw whatsapp link-device --config /opt/claw-boutique/openclaw/openclaw.json
+   openclaw channels add --channel telegram --token "<bot-token>"
+   openclaw config set channels.telegram.dmPolicy open
+   openclaw config set channels.telegram.allowFrom '["*"]' --strict-json
    ```
-2. A QR code is displayed in the terminal (or at `https://<instance-ip>:8443/admin/link-qr` if the admin UI is enabled).
-3. On the seller's phone: open WhatsApp > tap the three-dot menu > **Linked Devices** > **Link a Device**.
-4. Scan the QR code. The session is stored on disk; it persists across gateway restarts.
-5. To unlink at any time:
+3. The seller must send `/start` to the bot before messages can be delivered.
+4. Verify the channel is running:
    ```
-   openclaw whatsapp unlink-device --config /opt/claw-boutique/openclaw/openclaw.json
+   openclaw channels status
    ```
 
-**Note:** The seller's linked device session is separate from the WhatsApp Business API used for customer messages. The `SELLER_PHONE` env var tells OpenClaw which incoming messages to treat as seller commands.
+**Note:** The Telegram bot channel is separate from the WhatsApp Business API (WABA) used for customer messages. Customer WhatsApp messages go through EUMS/SNS to the Bedrock Agent.
 
 ---
 
@@ -200,7 +201,7 @@ python tools/send_email.py \
   --variables '{"customer_name":"Jane","order_id":"ORD-001","items_summary":"1x Black Crop Top (M)","total":"499.00","shop_url":"https://clawboutique.ph"}'
 ```
 
-### escalate_to_human (requires DB + WhatsApp env vars)
+### escalate_to_human (requires DB + agent-bridge env vars)
 ```bash
 python tools/escalate_to_human.py \
   --reason "Refund request" \

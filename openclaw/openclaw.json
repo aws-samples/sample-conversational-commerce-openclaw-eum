@@ -120,18 +120,12 @@
       "waba_id_env": "WHATSAPP_WABA_ID",
       "webhook_path": "/inbound/whatsapp"
     },
-    "whatsapp_seller": {
-      "type": "whatsapp_personal",
-      "_comment": "Messages from the seller's personal WhatsApp (linked device). Used for operational commands.",
-      "seller_phone_env": "SELLER_PHONE",
-      "webhook_path": "/webhook/seller"
-    },
-    "email": {
-      "type": "ses_inbound",
-      "_comment": "SES inbound email routed via SNS/SQS into OpenClaw for support triage.",
-      "sqs_queue_url_env": "SES_INBOUND_SQS_URL",
-      "poll_interval_seconds": 30,
-      "from_filter": null
+    "telegram_seller": {
+      "type": "telegram",
+      "_comment": "Messages from the seller via Telegram bot. Seller alerts, restock commands, and apology approvals flow through this channel. The agent-bridge sends notifications here; the seller replies directly to the Telegram bot.",
+      "token_env": "TELEGRAM_BOT_TOKEN",
+      "dmPolicy": "open",
+      "allowFrom": ["*"]
     }
   },
 
@@ -363,7 +357,7 @@
     // -------------------------------------------------------------------------
     {
       "name": "escalate_to_human",
-      "description": "Escalate a customer conversation to the store owner. Records the escalation in the database, sends a WhatsApp alert to the seller (SELLER_PHONE), and optionally an email alert (SELLER_EMAIL). Call this whenever the situation is beyond automated resolution.",
+      "description": "Escalate a customer conversation to the store owner. Records the escalation in the database, sends a Telegram alert to the seller via the agent-bridge, and optionally an email alert (SELLER_EMAIL). Call this whenever the situation is beyond automated resolution.",
       "script": "tools/escalate_to_human.py",
       "parameters": {
         "type": "object",

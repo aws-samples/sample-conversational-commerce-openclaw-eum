@@ -19,23 +19,27 @@
  *                  ├─ .entry[].changes[].value.messages[]     (inbound messages)
  *                  └─ .entry[].changes[].value.statuses[]     (delivery receipts)
  *
- *    Inbound messages are routed to Bedrock Agent; the reply is sent back to
- *    the customer via AWS End User Messaging Social (SendWhatsAppMessage).
+ *    Routing:
+ *      - Messages from SELLER_PHONE → forwarded to OpenClaw gateway (/webhook/seller)
+ *        for processing by Claude (admin commands, restock, apology, etc.)
+ *      - Messages from anyone else  → routed to Bedrock Agent (Nova Lite) for
+ *        customer support, with reply sent back via EUMS.
  *    A fire-and-forget log POST is sent to OpenClaw for async record-keeping.
  *
- * 2. SES inbound email events
- *    Delivered via SES → S3/SQS → SNS.  The SNS `Message` field contains the
- *    SES notification JSON with `mail`, `receipt` and optionally `content`.
- *    Routed unchanged to the OpenClaw gateway.
+ * 2. SES inbound email events (no-op)
+ *    Email is no longer used as a 2-way channel. Seller commands flow through
+ *    WhatsApp → OpenClaw.
  *
  * Environment variables
  * ─────────────────────
- *   OPENCLAW_GATEWAY_URL      – Base HTTPS URL of the OpenClaw gateway
- *                               e.g. https://api.openclaw.example.com
+ *   OPENCLAW_GATEWAY_URL      – Base URL of the OpenClaw gateway
+ *                               e.g. http://32.195.52.35:18789
  *   OPENCLAW_GATEWAY_TOKEN    – Bearer token sent in every request to OpenClaw
  *   BEDROCK_AGENT_ID          – Bedrock Agent ID
  *   BEDROCK_AGENT_ALIAS_ID    – Bedrock Agent Alias ID
  *   WHATSAPP_PHONE_NUMBER_ID  – EUMS origination phone number ID
+ *   SELLER_PHONE              – E.164 phone number of the store owner; messages
+ *                               from this number are routed to OpenClaw
  */
 
 import axios, { AxiosError } from "axios";
@@ -64,6 +68,7 @@ const BEDROCK_AGENT_ID = process.env.BEDROCK_AGENT_ID ?? "";
 const BEDROCK_AGENT_ALIAS_ID = process.env.BEDROCK_AGENT_ALIAS_ID ?? "";
 const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID ?? "";
 const STORE_API_URL = (process.env.STORE_API_URL ?? "").replace(/\/$/, "");
+const SELLER_PHONE = process.env.SELLER_PHONE ?? "";
 
 if (!GATEWAY_URL) {
   console.warn("[dispatcher] OPENCLAW_GATEWAY_URL is not set – SES/status POSTs will fail");
@@ -271,44 +276,8 @@ interface EUMSOuterEnvelope {
 }
 
 // ---------------------------------------------------------------------------
-// SES email payload types
+// SES email payload types (kept minimal - email is now notification-only)
 // ---------------------------------------------------------------------------
-
-interface SesMailHeaders {
-  name: string;
-  value: string;
-}
-
-interface SesMail {
-  source: string;
-  destination: string[];
-  messageId: string;
-  commonHeaders: {
-    from?: string[];
-    to?: string[];
-    subject?: string;
-    date?: string;
-    [key: string]: unknown;
-  };
-  headers: SesMailHeaders[];
-}
-
-interface SesReceipt {
-  action: {
-    type: string;
-    bucketName?: string;
-    objectKey?: string;
-    [key: string]: unknown;
-  };
-  [key: string]: unknown;
-}
-
-interface SesNotification {
-  notificationType: string;
-  mail: SesMail;
-  receipt: SesReceipt;
-  content?: string; // raw email body if included
-}
 
 // ---------------------------------------------------------------------------
 // Record processors
@@ -426,6 +395,10 @@ async function handleWhatsAppRecord(record: SNSEventRecord): Promise<void> {
             continue;
           }
 
+          // Seller commands go through WhatsApp self-chat → OpenClaw (linked device).
+          // All messages to the WABA number (including from the seller) are routed
+          // to the Bedrock Agent as normal customer interactions.
+
           // Check if this is a survey rating reply (single digit 1-5)
           const trimmed = messageText.trim();
           if (/^[1-5]$/.test(trimmed)) {
@@ -516,112 +489,13 @@ async function handleWhatsAppRecord(record: SNSEventRecord): Promise<void> {
 /**
  * Handles an SES inbound email SNS record.
  *
- * SES inbound email flow:
- *   SES receipt rule → S3 (store raw email) + SNS (notification)
- *
- * The SNS notification `Message` field contains a JSON-serialised
- * SesNotification object with `mail`, `receipt`, and (optionally) `content`.
+ * Email is no longer used as a 2-way channel. Seller notifications and
+ * commands now flow through WhatsApp (seller messages → OpenClaw).
+ * This handler only logs the event for visibility.
  */
 async function handleSesEmailRecord(record: SNSEventRecord): Promise<void> {
-  const snsMessageRaw = record.Sns.Message;
-
-  let sesNotification: SesNotification;
-  try {
-    sesNotification = JSON.parse(snsMessageRaw) as SesNotification;
-  } catch (err) {
-    log("ERROR", "Failed to parse SES notification JSON", {
-      messageId: record.Sns.MessageId,
-      raw: snsMessageRaw.slice(0, 500),
-    });
-    return;
-  }
-
-  const { mail, receipt, content } = sesNotification;
-
-  const sender = mail.source;
-  const subject = mail.commonHeaders?.subject ?? "(no subject)";
-  const to = mail.destination ?? mail.commonHeaders?.to ?? [];
-
-  // If the SES rule stored the email in S3, the object key is in receipt.action
-  const s3BucketName = receipt.action?.bucketName;
-  const s3ObjectKey = receipt.action?.objectKey;
-
-  log("INFO", "Routing SES inbound email", {
+  log("INFO", "SES email received (no-op, seller channel is WhatsApp now)", {
     messageId: record.Sns.MessageId,
-    sesMessageId: mail.messageId,
-    sender,
-    subject,
-    hasInlineContent: Boolean(content),
-    s3BucketName,
-    s3ObjectKey,
-  });
-
-  // ── Handle admin email replies to automated alerts ─────────────────────
-  // Detect replies to stock / review alerts and act via the Store API.
-  // Also forward to OpenClaw for logging (fire-and-forget, non-blocking).
-  const subjectLower = subject.toLowerCase();
-  const isReply = subjectLower.startsWith("re:");
-
-  if (isReply && STORE_API_URL) {
-    const bodyText = content ?? "";
-
-    // Stock Alert reply → restock the product
-    if (subjectLower.includes("stock alert")) {
-      const stockMatch = bodyText.match(/(?:LOW STOCK|OUT OF STOCK):\s*([^—–\n<]+)/i);
-      const productName = stockMatch ? stockMatch[1].trim() : "";
-      if (productName) {
-        log("INFO", "Admin email reply: restock request", { sender, productName });
-        try {
-          await axios.post(`${STORE_API_URL}/api/admin/email-action`, {
-            action: "restock",
-            product_name: productName,
-            qty: 20,
-          }, { timeout: 15_000 });
-          log("INFO", "Restock action completed", { productName });
-        } catch (err) {
-          log("ERROR", "Restock action failed", { error: (err as Error).message });
-        }
-      }
-    }
-
-    // Negative Review Alert reply → send WhatsApp apology & refund
-    if (subjectLower.includes("review alert")) {
-      const phoneMatch = bodyText.match(/(\+\d{8,15})/);
-      const nameMatch = bodyText.match(/Customer[:\s]*\s*([^(<\n]+?)[\s]*\(/i);
-      const customerPhone = phoneMatch ? phoneMatch[1] : "";
-      const customerName = nameMatch ? nameMatch[1].trim() : "";
-      if (customerPhone) {
-        log("INFO", "Admin email reply: send apology", { sender, customerPhone, customerName });
-        try {
-          await axios.post(`${STORE_API_URL}/api/admin/email-action`, {
-            action: "send_apology",
-            customer_phone: customerPhone,
-            customer_name: customerName,
-          }, { timeout: 15_000 });
-          log("INFO", "Apology action completed", { customerPhone });
-        } catch (err) {
-          log("ERROR", "Apology action failed", { error: (err as Error).message });
-        }
-      }
-    }
-  }
-
-  // Forward to OpenClaw for AI logging (fire-and-forget — don't fail if unreachable)
-  postToGateway("/inbound/email", {
-    source: "email",
-    messageId: mail.messageId,
-    sender,
-    to,
-    subject,
-    date: mail.commonHeaders?.date,
-    headers: mail.headers,
-    body: content ?? null,
-    s3: s3BucketName && s3ObjectKey
-      ? { bucket: s3BucketName, key: s3ObjectKey }
-      : null,
-    rawMail: mail,
-  }).catch((err: Error) => {
-    log("WARN", "OpenClaw email forward failed (non-fatal)", { error: err.message });
   });
 }
 
