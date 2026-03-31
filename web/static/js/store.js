@@ -439,6 +439,12 @@ function showCheckout() {
   document.getElementById('checkout-view').classList.remove('hidden');
   document.getElementById('confirmation-view').classList.add('hidden');
 
+  // Reset button in case a previous submission left it disabled
+  const btn = document.getElementById('place-order-btn');
+  btn.disabled = false;
+  btn.textContent = 'Place Order';
+  document.getElementById('checkout-error').classList.add('hidden');
+
   renderCheckoutSummary();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }

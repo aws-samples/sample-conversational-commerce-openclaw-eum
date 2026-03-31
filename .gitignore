@@ -56,3 +56,6 @@ blog-post.*
 scripts/create-blog-docx.py
 ~$*
 docs/.$*.bkp
+
+# SSH keys
+*.pem
