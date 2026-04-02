@@ -95,11 +95,9 @@
       "AWS_ACCESS_KEY_ID",
       "AWS_SECRET_ACCESS_KEY",
       "AWS_REGION",
-      "SES_FROM_EMAIL",
-      "SES_FROM_NAME",
-      "SELLER_PHONE",
-      "SELLER_EMAIL",
-      "SELLER_NAME"
+      "SELLER_NAME",
+      "OPENCLAW_BRIDGE_URL",
+      "OPENCLAW_BRIDGE_TOKEN"
     ],
     "network": "bridge",
     "memory_mb": 256,
@@ -122,10 +120,10 @@
     },
     "telegram_seller": {
       "type": "telegram",
-      "_comment": "Messages from the seller via Telegram bot. Seller alerts, restock commands, and apology approvals flow through this channel. The agent-bridge sends notifications here; the seller replies directly to the Telegram bot.",
+      "_comment": "Messages from the seller via Telegram bot. Seller alerts, restock commands, and apology approvals flow through this channel. The agent-bridge sends notifications here; the seller replies directly to the Telegram bot. TELEGRAM_SELLER_ID must be the numeric Telegram user ID of the store owner.",
       "token_env": "TELEGRAM_BOT_TOKEN",
-      "dmPolicy": "open",
-      "allowFrom": ["*"]
+      "dmPolicy": "allowlist",
+      "allowFrom_env": "TELEGRAM_SELLER_ID"
     }
   },
 
@@ -193,7 +191,7 @@
     // -------------------------------------------------------------------------
     {
       "name": "create_order",
-      "description": "Create a new order for a customer. Upserts the customer record if they are new. Only call this after the customer has explicitly confirmed the order summary. Does NOT send confirmation messages — call send_customer_reply and send_email separately after success.",
+      "description": "Create a new order for a customer. Upserts the customer record if they are new. Only call this after the customer has explicitly confirmed the order summary. The Store API automatically sends an order confirmation email. After success, call send_customer_reply to send a WhatsApp confirmation.",
       "script": "tools/create_order.py",
       "parameters": {
         "type": "object",
@@ -234,7 +232,7 @@
         "required": ["customer_phone", "customer_name", "customer_email", "items"]
       },
       "returns": {
-        "_comment": "Returns {order_id, total, confirmation_sent: false} or {error}. confirmation_sent is always false — you must send notifications manually."
+        "_comment": "Returns {order_id, total} or {error}. The Store API sends the order confirmation email automatically. Send a WhatsApp confirmation via send_customer_reply."
       },
       "cli_arg_style": "double_dash",
       "cli_json_args": ["items"]
@@ -317,47 +315,11 @@
     },
 
     // -------------------------------------------------------------------------
-    // send_email
-    // -------------------------------------------------------------------------
-    {
-      "name": "send_email",
-      "description": "Send a transactional email to a customer or the seller via Amazon SES. Only the three approved templates may be used: order_confirmation, order_shipped, escalation_alert.",
-      "script": "tools/send_email.py",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "recipient_email": {
-            "type": "string",
-            "description": "Destination email address."
-          },
-          "template_name": {
-            "type": "string",
-            "enum": ["order_confirmation", "order_shipped", "escalation_alert"],
-            "description": "The email template to render and send."
-          },
-          "variables": {
-            "type": "object",
-            "description": "Template substitution variables. Required keys vary by template: order_confirmation needs {customer_name, order_id, items_summary, total, shop_url}; order_shipped needs {customer_name, order_id, tracking_url, carrier}; escalation_alert needs {customer_phone, reason, summary, seller_name}.",
-            "additionalProperties": {
-              "type": "string"
-            }
-          }
-        },
-        "required": ["recipient_email", "template_name", "variables"]
-      },
-      "returns": {
-        "_comment": "Returns {success, email_id} or {error}."
-      },
-      "cli_arg_style": "double_dash",
-      "cli_json_args": ["variables"]
-    },
-
-    // -------------------------------------------------------------------------
     // escalate_to_human
     // -------------------------------------------------------------------------
     {
       "name": "escalate_to_human",
-      "description": "Escalate a customer conversation to the store owner. Records the escalation in the database, sends a Telegram alert to the seller via the agent-bridge, and optionally an email alert (SELLER_EMAIL). Call this whenever the situation is beyond automated resolution.",
+      "description": "Escalate a customer conversation to the store owner. Records the escalation in the database and sends a Telegram alert to the seller via the agent-bridge. Call this whenever the situation is beyond automated resolution.",
       "script": "tools/escalate_to_human.py",
       "parameters": {
         "type": "object",

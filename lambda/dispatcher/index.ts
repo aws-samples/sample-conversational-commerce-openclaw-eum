@@ -20,15 +20,13 @@
  *                  └─ .entry[].changes[].value.statuses[]     (delivery receipts)
  *
  *    Routing:
- *      - Messages from SELLER_PHONE → forwarded to OpenClaw gateway (/webhook/seller)
- *        for processing by Claude (admin commands, restock, apology, etc.)
- *      - Messages from anyone else  → routed to Bedrock Agent (Nova Lite) for
- *        customer support, with reply sent back via EUMS.
- *    A fire-and-forget log POST is sent to OpenClaw for async record-keeping.
+ *      - All messages → routed to Bedrock Agent (Nova Lite) for customer support,
+ *        with reply sent back via EUMS.
+ *    Seller commands come through the Telegram bot (handled by OpenClaw directly).
  *
  * 2. SES inbound email events (no-op)
  *    Email is no longer used as a 2-way channel. Seller commands flow through
- *    WhatsApp → OpenClaw.
+ *    Telegram → OpenClaw.
  *
  * Environment variables
  * ─────────────────────
@@ -38,8 +36,7 @@
  *   BEDROCK_AGENT_ID          – Bedrock Agent ID
  *   BEDROCK_AGENT_ALIAS_ID    – Bedrock Agent Alias ID
  *   WHATSAPP_PHONE_NUMBER_ID  – EUMS origination phone number ID
- *   SELLER_PHONE              – E.164 phone number of the store owner; messages
- *                               from this number are routed to OpenClaw
+ *   (Seller commands arrive via Telegram, not through this Lambda)
  */
 
 import axios, { AxiosError } from "axios";
@@ -68,7 +65,6 @@ const BEDROCK_AGENT_ID = process.env.BEDROCK_AGENT_ID ?? "";
 const BEDROCK_AGENT_ALIAS_ID = process.env.BEDROCK_AGENT_ALIAS_ID ?? "";
 const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID ?? "";
 const STORE_API_URL = (process.env.STORE_API_URL ?? "").replace(/\/$/, "");
-const SELLER_PHONE = process.env.SELLER_PHONE ?? "";
 
 if (!GATEWAY_URL) {
   console.warn("[dispatcher] OPENCLAW_GATEWAY_URL is not set – SES/status POSTs will fail");
@@ -429,8 +425,14 @@ async function handleWhatsAppRecord(record: SNSEventRecord): Promise<void> {
             messageId: msg.id,
           });
 
+          // Wrap in a labelled container so the model receives structural
+          // context that this is customer-sourced data, not a system command.
+          // This is a defence-in-depth measure against prompt injection;
+          // the Bedrock Guardrail and agent instruction are the primary defences.
+          const safeInput = `[Customer WhatsApp message from ${senderPhone}]\n${messageText}`;
+
           // Invoke Bedrock Agent and collect streaming reply
-          const replyText = await invokeBedrockAgent(senderPhone, messageText);
+          const replyText = await invokeBedrockAgent(senderPhone, safeInput);
 
           log("INFO", "Bedrock Agent reply received", {
             from: senderPhone,
@@ -494,7 +496,7 @@ async function handleWhatsAppRecord(record: SNSEventRecord): Promise<void> {
  * This handler only logs the event for visibility.
  */
 async function handleSesEmailRecord(record: SNSEventRecord): Promise<void> {
-  log("INFO", "SES email received (no-op, seller channel is WhatsApp now)", {
+  log("INFO", "SES email received (no-op, seller channel is Telegram now)", {
     messageId: record.Sns.MessageId,
   });
 }

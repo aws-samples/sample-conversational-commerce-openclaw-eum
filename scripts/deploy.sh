@@ -175,7 +175,6 @@ success "AWS caller identity verified (account: ${CALLER_ACCOUNT})"
 # Verify .env required variables
 REQUIRED_VARS=(DB_HOST DB_USER DB_PASSWORD DB_NAME
                WHATSAPP_PHONE_NUMBER_ID
-               SELLER_PHONE SELLER_EMAIL
                SES_FROM_EMAIL)
 ENV_ERRORS=()
 for var in "${REQUIRED_VARS[@]}"; do
@@ -466,8 +465,6 @@ WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID}
 WHATSAPP_WABA_ID=${WHATSAPP_WABA_ID:-}
 
 # Seller info
-SELLER_PHONE=${SELLER_PHONE}
-SELLER_EMAIL=${SELLER_EMAIL}
 SELLER_NAME=${SELLER_NAME:-"Store Owner"}
 
 # SES

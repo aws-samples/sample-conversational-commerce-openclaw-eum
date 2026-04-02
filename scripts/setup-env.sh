@@ -44,12 +44,8 @@ REQUIRED_VARS=(
   DB_PASSWORD
   DB_NAME
   WHATSAPP_PHONE_NUMBER_ID
-  WHATSAPP_TOKEN
-  WHATSAPP_WEBHOOK_VERIFY_TOKEN
   SES_FROM_EMAIL
   SES_FROM_NAME
-  SELLER_PHONE
-  SELLER_EMAIL
   SELLER_NAME
   OPENCLAW_GATEWAY_URL
   OPENCLAW_GATEWAY_TOKEN
@@ -126,7 +122,7 @@ echo ""
 echo " WhatsApp #ID   : $WHATSAPP_PHONE_NUMBER_ID"
 echo " SES From       : $SES_FROM_NAME <$SES_FROM_EMAIL>"
 echo ""
-echo " Seller         : $SELLER_NAME ($SELLER_PHONE)"
+echo " Seller         : $SELLER_NAME"
 echo " OpenClaw URL   : $OPENCLAW_GATEWAY_URL"
 echo ""
 echo " CLI tools      : aws $(aws --version 2>&1 | awk '{print $1}'), node $(node --version), python3 $(python3 --version 2>&1 | awk '{print $2}')"

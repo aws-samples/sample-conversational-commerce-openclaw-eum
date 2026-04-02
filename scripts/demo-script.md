@@ -105,7 +105,7 @@ This script walks through every major feature in sequence:
 
 **Expected outcome:** HTML email from `orders@anycompany.com` with a red header "Claw Boutique: Stock Alert" and at least one amber alert box naming the product.
 
-**If no email arrives:** The purchased product may have sufficient stock (stock_qty > 5 and sell rate is low). Try purchasing a product that already shows low stock, or verify `SELLER_EMAIL` is set to `admin@anycompany.com` in Lambda environment variables.
+**If no email arrives:** The purchased product may have sufficient stock (stock_qty > 5 and sell rate is low). Try purchasing a product that already shows low stock. Stock alerts are sent to the seller via Telegram.
 
 ---
 
@@ -284,7 +284,7 @@ Every purchase triggers a stock alert email (Step 5). Escalations can also be cr
 |---------|-------------|-----|
 | Products show mock data (IDs like "p1", "p2") | Store API unreachable | Check Lambda function `ClawBoutiqueStoreApi` is deployed and DB is reachable |
 | Order placement returns 500 | DB connection error | Verify `DB_SECRET_ARN` in Lambda env and Secrets Manager has correct credentials |
-| No stock alert email | Product stock is healthy or `SELLER_EMAIL` unset | Set `SELLER_EMAIL=admin@anycompany.com` in Lambda env |
+| No stock alert Telegram message | Product stock is healthy or agent-bridge down | Check Lightsail `openclaw` process and `OPENCLAW_BRIDGE_URL` env var |
 | No abandonment WhatsApp | Phone not in 24-hour window | Send a message to the business number first to open a window |
 | OpenClaw doesn't reply to WhatsApp | Lightsail instance down or token wrong | SSH to Lightsail and check `openclaw` process; check `OPENCLAW_GATEWAY_URL` in Lambda env |
 | Admin email reply not processed | SES receipt rule inactive | Run `aws ses set-active-receipt-rule-set --rule-set-name ClawBoutiqueRuleSet` |

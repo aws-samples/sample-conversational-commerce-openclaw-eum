@@ -5,6 +5,7 @@ When running on Lambda, reads DB credentials from Secrets Manager via
 DB_SECRET_ARN. Falls back to individual DB_* env vars for local dev.
 """
 
+import html
 import json
 import logging
 import os
@@ -29,7 +30,10 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=[
+    "https://d22y1hcx8ni0pf.cloudfront.net",
+    "http://localhost:*",
+])
 
 # ---------------------------------------------------------------------------
 # Database helpers
@@ -90,7 +94,7 @@ def get_db():
         conn.close()
 
 
-def _cursor(conn, dictionary: bool = True):
+def _cursor(conn):
     """Return a cursor. pymysql uses DictCursor by default via config."""
     return conn.cursor()
 
@@ -110,6 +114,157 @@ def _not_found(resource: str = "Resource"):
 # ---------------------------------------------------------------------------
 # Async notification helpers (fire-and-forget, never block API response)
 # ---------------------------------------------------------------------------
+
+def _send_order_confirmation_email(
+    customer_email: str,
+    customer_name: str,
+    order_id: int,
+    items_summary: str,
+    total: float,
+):
+    """Send an order confirmation email to the customer via SES.
+
+    Reads SES_FROM_EMAIL (required) and SES_FROM_NAME (optional) from env.
+    Silently skips if SES_FROM_EMAIL is not configured.
+    """
+    from_addr = os.environ.get("SES_FROM_EMAIL", "").strip()
+    if not from_addr:
+        logger.warning("SES_FROM_EMAIL not set, skipping order confirmation email")
+        return
+
+    from_name = os.environ.get("SES_FROM_NAME", "Claw Boutique").strip()
+    sender = f"{from_name} <{from_addr}>" if from_name else from_addr
+    shop_url = os.environ.get("SHOP_URL", "https://d22y1hcx8ni0pf.cloudfront.net")
+
+    safe_name = html.escape(customer_name)
+    safe_items = html.escape(items_summary)
+
+    subject = f"Your Claw Boutique order #{order_id} is confirmed!"
+    html_body = f"""\
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Order Confirmed</title></head>
+<body style="font-family:sans-serif;color:#333;max-width:600px;margin:auto;padding:20px">
+  <h2 style="color:#c0392b">Claw Boutique</h2>
+  <p>Hi {safe_name},</p>
+  <p>We've received your order and it's being prepared!</p>
+  <table style="width:100%;border-collapse:collapse">
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #eee"><strong>Order ID</strong></td>
+      <td style="padding:8px;border-bottom:1px solid #eee">#{order_id}</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #eee"><strong>Items</strong></td>
+      <td style="padding:8px;border-bottom:1px solid #eee">{safe_items}</td>
+    </tr>
+    <tr>
+      <td style="padding:8px"><strong>Total</strong></td>
+      <td style="padding:8px">PHP {total:.2f}</td>
+    </tr>
+  </table>
+  <p style="margin-top:20px">
+    Browse our latest drops at
+    <a href="{shop_url}" style="color:#c0392b">{shop_url}</a>
+  </p>
+  <p>Thank you for shopping with us!</p>
+  <p style="color:#888;font-size:12px">Claw Boutique</p>
+</body>
+</html>"""
+    text_body = (
+        f"Hi {customer_name},\n\n"
+        f"Your Claw Boutique order #{order_id} has been confirmed!\n\n"
+        f"Items: {items_summary}\n"
+        f"Total: PHP {total:.2f}\n\n"
+        f"Shop: {shop_url}\n\n"
+        f"Thank you for shopping with us!\n"
+        f"Claw Boutique"
+    )
+
+    try:
+        ses = boto3.client("ses", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+        ses.send_email(
+            Source=sender,
+            Destination={"ToAddresses": [customer_email]},
+            Message={
+                "Subject": {"Data": subject, "Charset": "UTF-8"},
+                "Body": {
+                    "Text": {"Data": text_body, "Charset": "UTF-8"},
+                    "Html": {"Data": html_body, "Charset": "UTF-8"},
+                },
+            },
+        )
+        logger.info("Order confirmation email sent to %s for order #%d", customer_email, order_id)
+    except Exception:
+        logger.exception("SES order confirmation email failed (non-fatal)")
+
+
+def _send_order_shipped_email(
+    customer_email: str,
+    customer_name: str,
+    order_id: int,
+    tracking_url: str,
+):
+    """Send an order shipped notification email to the customer via SES.
+
+    Silently skips if SES_FROM_EMAIL is not configured.
+    """
+    from_addr = os.environ.get("SES_FROM_EMAIL", "").strip()
+    if not from_addr:
+        logger.warning("SES_FROM_EMAIL not set, skipping order shipped email")
+        return
+
+    from_name = os.environ.get("SES_FROM_NAME", "Claw Boutique").strip()
+    sender = f"{from_name} <{from_addr}>" if from_name else from_addr
+
+    safe_name = html.escape(customer_name)
+    safe_tracking = html.escape(tracking_url) if tracking_url else ""
+
+    subject = f"Your Claw Boutique order #{order_id} has shipped!"
+    tracking_line_html = (
+        f'<p><a href="{safe_tracking}" style="color:#c0392b">Track your order</a></p>'
+        if safe_tracking
+        else ""
+    )
+    tracking_line_text = f"\nTrack your order: {tracking_url}\n" if tracking_url else ""
+
+    html_body = f"""\
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Order Shipped</title></head>
+<body style="font-family:sans-serif;color:#333;max-width:600px;margin:auto;padding:20px">
+  <h2 style="color:#c0392b">Claw Boutique</h2>
+  <p>Hi {safe_name},</p>
+  <p>Great news — your order #{order_id} is on its way!</p>
+  {tracking_line_html}
+  <p>Thank you for shopping with us!</p>
+  <p style="color:#888;font-size:12px">Claw Boutique</p>
+</body>
+</html>"""
+    text_body = (
+        f"Hi {customer_name},\n\n"
+        f"Great news — your Claw Boutique order #{order_id} is on its way!"
+        f"{tracking_line_text}\n"
+        f"Thank you for shopping with us!\n"
+        f"Claw Boutique"
+    )
+
+    try:
+        ses = boto3.client("ses", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+        ses.send_email(
+            Source=sender,
+            Destination={"ToAddresses": [customer_email]},
+            Message={
+                "Subject": {"Data": subject, "Charset": "UTF-8"},
+                "Body": {
+                    "Text": {"Data": text_body, "Charset": "UTF-8"},
+                    "Html": {"Data": html_body, "Charset": "UTF-8"},
+                },
+            },
+        )
+        logger.info("Order shipped email sent to %s for order #%d", customer_email, order_id)
+    except Exception:
+        logger.exception("SES order shipped email failed (non-fatal)")
+
 
 def _notify_seller(text: str):
     """Send a notification to the seller via the OpenClaw agent-bridge (Telegram).
@@ -294,7 +449,7 @@ def list_products():
                 rows = cur.fetchall()
     except Exception as exc:
         logger.exception("list_products error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
 
     products = [
         {
@@ -328,7 +483,7 @@ def get_product(product_id: int):
                 row = cur.fetchone()
     except Exception as exc:
         logger.exception("get_product error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
 
     if not row:
         return _not_found("Product")
@@ -364,7 +519,7 @@ def update_product(product_id):
                 conn.commit()
     except Exception as exc:
         logger.exception("update_product error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
     return jsonify({"ok": True, "updated": list(updates.keys())})
 
 
@@ -380,7 +535,7 @@ def reset_stock():
                 count = cur.rowcount
     except Exception as exc:
         logger.exception("reset_stock error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
     return jsonify({"ok": True, "products_updated": count, "stock_qty": qty})
 
 
@@ -505,7 +660,7 @@ def create_order():
         return _err(str(exc), 422)
     except Exception as exc:
         logger.exception("create_order error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
 
     # Check stock levels and alert admin if low
     _check_stock_and_alert(product_ids)
@@ -524,6 +679,21 @@ def create_order():
                 conn.commit()
     except Exception:
         logger.exception("Demo stock reset failed (non-fatal)")
+
+    # Send order confirmation email to the customer
+    if customer_email:
+        items_summary = ", ".join(
+            f"{product_rows[pid]['name']} x{qty}"
+            for pid, qty in qty_map.items()
+            if pid in product_rows
+        )
+        _send_order_confirmation_email(
+            customer_email=customer_email,
+            customer_name=customer_name,
+            order_id=order_id,
+            items_summary=items_summary,
+            total=total,
+        )
 
     # Fire-and-forget: send WhatsApp survey to customer
     if customer_phone:
@@ -569,7 +739,7 @@ def list_orders():
                 rows = cur.fetchall()
     except Exception as exc:
         logger.exception("list_orders error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
 
     orders = [
         {
@@ -629,7 +799,7 @@ def get_order(order_id: int):
                 items = cur.fetchall()
     except Exception as exc:
         logger.exception("get_order error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
 
     return jsonify(
         {
@@ -669,6 +839,9 @@ def update_order_status(order_id: int):
     new_status = (body.get("new_status") or body.get("status") or "").strip()
     tracking_url = body.get("tracking_url")
 
+    if tracking_url and not tracking_url.startswith("https://"):
+        return _err("tracking_url must be an https:// URL.")
+
     if not new_status:
         return _err("new_status is required.")
 
@@ -678,11 +851,15 @@ def update_order_status(order_id: int):
             f"Allowed: {list(_ORDER_TRANSITIONS.keys())}"
         )
 
+    row: dict = {}
     try:
         with get_db() as conn:
             with _cursor(conn) as cur:
                 cur.execute(
-                    "SELECT status FROM orders WHERE id = %s LIMIT 1",
+                    """SELECT o.status, c.email AS customer_email, c.name AS customer_name
+                       FROM orders o
+                       LEFT JOIN customers c ON c.id = o.customer_id
+                       WHERE o.id = %s LIMIT 1""",
                     (order_id,),
                 )
                 row = cur.fetchone()
@@ -716,7 +893,15 @@ def update_order_status(order_id: int):
                 )
     except Exception as exc:
         logger.exception("update_order_status error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
+
+    if new_status == "shipped" and row.get("customer_email"):
+        _send_order_shipped_email(
+            customer_email=row["customer_email"],
+            customer_name=row["customer_name"] or "Valued Customer",
+            order_id=order_id,
+            tracking_url=tracking_url or "",
+        )
 
     return jsonify(
         {"order_id": order_id, "status": new_status, "tracking_url": tracking_url}
@@ -764,7 +949,7 @@ def list_escalations():
                 rows = cur.fetchall()
     except Exception as exc:
         logger.exception("list_escalations error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
 
     escalations = [
         {
@@ -826,7 +1011,7 @@ def create_escalation():
                 escalation_id = cur.lastrowid
     except Exception as exc:
         logger.exception("create_escalation error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
 
     return jsonify({
         "escalation_id": escalation_id,
@@ -871,7 +1056,7 @@ def get_escalation(escalation_id: int):
                 actions = cur.fetchall()
     except Exception as exc:
         logger.exception("get_escalation error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
 
     return jsonify(
         {
@@ -939,7 +1124,7 @@ def resolve_escalation(escalation_id: int):
                 action_id = cur.lastrowid
     except Exception as exc:
         logger.exception("resolve_escalation error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
 
     return jsonify(
         {
@@ -991,7 +1176,7 @@ def send_apology_whatsapp(escalation_id: int):
                 action_id = cur.lastrowid
     except Exception as exc:
         logger.exception("send_apology_whatsapp error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
 
     return jsonify({
         "escalation_id": escalation_id,
@@ -1043,7 +1228,7 @@ def admin_email_action():
                     conn.commit()
         except Exception as exc:
             logger.exception("admin restock error")
-            return _err(str(exc), 500)
+            return _err("Internal server error.", 500)
 
         # Confirm to seller via Telegram
         _notify_seller(
@@ -1136,7 +1321,7 @@ def list_customers():
                 rows = cur.fetchall()
     except Exception as exc:
         logger.exception("list_customers error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
     return jsonify([dict(r) for r in rows])
 
 
@@ -1167,7 +1352,7 @@ def get_stats():
                 row = cur.fetchone()
     except Exception as exc:
         logger.exception("get_stats error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
 
     return jsonify(
         {
@@ -1227,7 +1412,7 @@ def save_memory():
                 memory_id = cur.lastrowid
     except Exception as exc:
         logger.exception("save_memory error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
 
     return jsonify({"id": memory_id, "created": True}), 201
 
@@ -1237,7 +1422,7 @@ def list_memory():
     customer_phone = request.args.get("customer_phone", "").strip() or None
     interaction_type = request.args.get("interaction_type", "").strip() or None
     search = request.args.get("search", "").strip() or None
-    limit = request.args.get("limit", 100, type=int)
+    limit = min(request.args.get("limit", 100, type=int), 500)
 
     conditions = []
     params = []
@@ -1269,7 +1454,7 @@ def list_memory():
                 rows = cur.fetchall()
     except Exception as exc:
         logger.exception("list_memory error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
 
     memories = [
         {
@@ -1319,7 +1504,7 @@ def create_review():
                 review_id = cur.lastrowid
     except Exception as exc:
         logger.exception("create_review error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
 
     if rating >= 4:
         action = "auto_thank"
@@ -1380,7 +1565,7 @@ def create_review_from_whatsapp():
                 order = cur.fetchone()
     except Exception as exc:
         logger.exception("from-whatsapp review lookup error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
 
     if not order:
         return _err(f"No orders found for phone {phone}", 404)
@@ -1404,7 +1589,7 @@ def create_review_from_whatsapp():
                 review_id = cur.lastrowid
     except Exception as exc:
         logger.exception("from-whatsapp review insert error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
 
     action = "auto_thank" if rating >= 4 else "follow_up" if rating == 3 else "escalate"
 
@@ -1459,7 +1644,7 @@ def list_reviews():
                 rows = cur.fetchall()
     except Exception as exc:
         logger.exception("list_reviews error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
 
     for r in rows:
         if r.get("created_at"):
@@ -1497,7 +1682,7 @@ def list_abandoned_carts():
                 rows = cur.fetchall()
     except Exception as exc:
         logger.exception("list_abandoned_carts error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
 
     for r in rows:
         for dt_field in ("created_at", "last_updated"):
@@ -1564,7 +1749,7 @@ def save_cart():
                 )
     except Exception as exc:
         logger.exception("save_cart error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
 
     return jsonify({"success": True})
 
@@ -1614,7 +1799,7 @@ def stock_analysis():
                 products = cur.fetchall()
     except Exception as exc:
         logger.exception("stock_analysis error")
-        return _err(str(exc), 500)
+        return _err("Internal server error.", 500)
 
     analysis = []
     alerts = []

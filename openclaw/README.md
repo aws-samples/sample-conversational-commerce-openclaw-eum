@@ -16,7 +16,6 @@ openclaw/
     list_products.py
     lookup_order.py
     send_customer_reply.py
-    send_email.py
     update_order_status.py
 ```
 
@@ -54,7 +53,7 @@ openclaw/
    ```
    openclaw start --config /opt/claw-boutique/openclaw/openclaw.json
    ```
-9. Point your WhatsApp webhook and SES inbound rule at `https://<instance-ip>:8443/webhook/whatsapp` and `https://<instance-ip>:8443/webhook/seller`.
+9. Point your WhatsApp webhook at `https://<instance-ip>:8443/webhook/whatsapp`.
 
 ---
 
@@ -102,10 +101,7 @@ DB_USER=clawbot
 DB_PASSWORD=supersecretpassword
 DB_NAME=claw_boutique
 
-WHATSAPP_API_URL=https://graph.facebook.com/v19.0
 WHATSAPP_PHONE_NUMBER_ID=1234567890
-WHATSAPP_TOKEN=your_system_user_token
-WHATSAPP_WEBHOOK_VERIFY_TOKEN=your_webhook_verify_token
 
 AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
 AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
@@ -113,9 +109,8 @@ AWS_REGION=ap-southeast-1
 SES_FROM_EMAIL=orders@clawboutique.ph
 SES_FROM_NAME=Claw Boutique
 
-SELLER_PHONE=+639171234567
-SELLER_EMAIL=owner@clawboutique.ph
 SELLER_NAME=Ate Claire
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 
 OPENCLAW_GATEWAY_TOKEN=your_daily_rotated_token
 REDIS_HOST=127.0.0.1
@@ -177,28 +172,12 @@ python tools/update_order_status.py \
 
 ### send_customer_reply (requires WhatsApp env vars)
 ```bash
-export WHATSAPP_API_URL=https://graph.facebook.com/v19.0
 export WHATSAPP_PHONE_NUMBER_ID=1234567890
-export WHATSAPP_TOKEN=your_token
 
 python tools/send_customer_reply.py \
   --customer_phone "+639171234567" \
   --message_type text \
   --message_content "$(echo -n 'Hi! Your order is confirmed.' | base64)"
-```
-
-### send_email (requires AWS env vars)
-```bash
-export AWS_ACCESS_KEY_ID=AKIAxxxxxxxx
-export AWS_SECRET_ACCESS_KEY=xxxxxxxx
-export AWS_REGION=ap-southeast-1
-export SES_FROM_EMAIL=orders@clawboutique.ph
-export SES_FROM_NAME="Claw Boutique"
-
-python tools/send_email.py \
-  --recipient_email "jane@example.com" \
-  --template_name order_confirmation \
-  --variables '{"customer_name":"Jane","order_id":"ORD-001","items_summary":"1x Black Crop Top (M)","total":"499.00","shop_url":"https://clawboutique.ph"}'
 ```
 
 ### escalate_to_human (requires DB + agent-bridge env vars)
@@ -263,8 +242,8 @@ Automate this with a cron job running at midnight:
 | Symptom | Check |
 |---|---|
 | Tool returns `{"error": "Missing required environment variable: DB_HOST"}` | Verify the `.env` file is loaded and the variable is set |
-| WhatsApp messages not sending | Check `WHATSAPP_TOKEN` expiry; verify `WHATSAPP_PHONE_NUMBER_ID` is correct |
+| WhatsApp messages not sending | Verify `WHATSAPP_PHONE_NUMBER_ID` is correct and EUMS is configured |
 | Emails not arriving | Check SES sandbox mode; verify `SES_FROM_EMAIL` is a verified identity |
 | Gateway returns 401 | `OPENCLAW_GATEWAY_TOKEN` may have rotated; update the calling service |
-| Seller commands not recognised | Verify `SELLER_PHONE` in env matches the E.164 number the seller is sending from |
+| Seller commands not recognised | Verify `TELEGRAM_BOT_TOKEN` is set and the Telegram bot is active |
 | Docker sandbox timeout | Increase `execution_timeout_seconds` in `openclaw.json`; check DB connectivity from within the container |

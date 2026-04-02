@@ -72,24 +72,7 @@ else
   fail "Cannot call sts:GetCallerIdentity for profile '$AWS_PROFILE' — run 'aws configure --profile $AWS_PROFILE'"
 fi
 
-# ── 3. WhatsApp token format ──────────────────────────────────────────────────
-
-header "WhatsApp Token"
-
-# Meta system user tokens are opaque strings, typically 100+ characters,
-# containing alphanumeric characters only (no whitespace or control chars).
-TOKEN_LEN=${#WHATSAPP_TOKEN}
-if [[ "$TOKEN_LEN" -lt 20 ]]; then
-  fail "WHATSAPP_TOKEN looks too short ($TOKEN_LEN chars) — Meta system user tokens are typically 100+ characters"
-elif [[ "$WHATSAPP_TOKEN" =~ [[:space:]] ]]; then
-  fail "WHATSAPP_TOKEN contains whitespace — check for accidental line breaks or spaces"
-elif [[ ! "$WHATSAPP_TOKEN" =~ ^[A-Za-z0-9_\-\.]+$ ]]; then
-  warn "WHATSAPP_TOKEN contains unexpected characters — verify it was copied correctly from Meta Business Manager"
-else
-  pass "WHATSAPP_TOKEN format looks valid ($TOKEN_LEN chars, no whitespace)"
-fi
-
-# ── 4. SES from-address is verified ──────────────────────────────────────────
+# ── 3. SES from-address is verified ──────────────────────────────────────────
 
 header "SES Email Verification"
 
@@ -123,17 +106,6 @@ if SES_STATUS=$(aws ses get-identity-verification-attributes \
   fi
 else
   warn "Could not query SES verification status — check AWS credentials and region"
-fi
-
-# ── 5. SELLER_PHONE E.164 format ─────────────────────────────────────────────
-
-header "Seller Phone (E.164)"
-
-# E.164: starts with +, followed by 7-15 digits, no spaces or dashes
-if [[ "$SELLER_PHONE" =~ ^\+[1-9][0-9]{6,14}$ ]]; then
-  pass "SELLER_PHONE $SELLER_PHONE is valid E.164 format"
-else
-  fail "SELLER_PHONE '$SELLER_PHONE' is not valid E.164 format — must be '+' followed by 7-15 digits with no spaces (e.g. +12125550101)"
 fi
 
 # ── Summary ───────────────────────────────────────────────────────────────────

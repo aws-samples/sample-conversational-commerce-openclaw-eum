@@ -55,6 +55,20 @@ function set_html(id, html) {
   if (e) e.innerHTML = html;
 }
 
+/** Escape a string for safe insertion into innerHTML. */
+function escHtml(s) {
+  if (s == null) return '';
+  const d = document.createElement('div');
+  d.appendChild(document.createTextNode(String(s)));
+  return d.innerHTML;
+}
+
+/** Escape a string for use inside an HTML attribute (single- or double-quoted). */
+function escAttr(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 // ---------------------------------------------------------------------------
 // Status badge
 // ---------------------------------------------------------------------------
@@ -101,7 +115,7 @@ function show_toast(message, type = 'success') {
   div.className = `pointer-events-auto flex items-center gap-3 ${color} text-white text-sm font-medium px-4 py-3 rounded-xl shadow-lg min-w-[260px] max-w-sm transition-all duration-300 opacity-0 translate-x-4`;
   div.innerHTML = `
     <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">${icon}</svg>
-    <span class="flex-1">${message}</span>
+    <span class="flex-1">${escHtml(message)}</span>
     <button onclick="document.getElementById('${id}').remove()" class="flex-shrink-0 opacity-70 hover:opacity-100">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
     </button>`;
@@ -287,7 +301,7 @@ function render_recent_orders(orders) {
           <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
         </div>
         <div class="min-w-0">
-          <div class="text-sm font-medium text-slate-800 truncate">${o.customer?.name || 'Unknown'}</div>
+          <div class="text-sm font-medium text-slate-800 truncate">${escHtml(o.customer?.name || 'Unknown')}</div>
           <div class="text-xs text-slate-400">#${o.id}</div>
         </div>
       </div>
@@ -309,8 +323,8 @@ function render_recent_escalations(escalations) {
     <div class="px-5 py-3 hover:bg-slate-50 cursor-pointer transition-colors" onclick="AdminApp.navigate('escalations')">
       <div class="flex items-start justify-between gap-2">
         <div class="min-w-0">
-          <div class="text-sm font-medium text-slate-800 truncate">${e.customer_phone || '—'}</div>
-          <div class="text-xs text-red-600 font-medium truncate">${e.reason || '—'}</div>
+          <div class="text-sm font-medium text-slate-800 truncate">${escHtml(e.customer_phone || '—')}</div>
+          <div class="text-xs text-red-600 font-medium truncate">${escHtml(e.reason || '—')}</div>
           <div class="text-xs text-slate-400 mt-0.5">${time_ago(e.created_at)}</div>
         </div>
         <span class="inline-flex w-2 h-2 rounded-full bg-red-400 flex-shrink-0 mt-1.5"></span>
@@ -368,8 +382,8 @@ function render_orders_table() {
         <span class="text-xs font-mono text-slate-500">#${o.id}</span>
       </td>
       <td class="px-4 py-3">
-        <div class="text-sm font-medium text-slate-800">${o.customer?.name || '—'}</div>
-        <div class="text-xs text-slate-400">${o.customer?.phone || ''}</div>
+        <div class="text-sm font-medium text-slate-800">${escHtml(o.customer?.name || '—')}</div>
+        <div class="text-xs text-slate-400">${escHtml(o.customer?.phone || '')}</div>
       </td>
       <td class="px-4 py-3 hidden md:table-cell text-xs text-slate-500">${fmt_date(o.created_at)}</td>
       <td class="px-4 py-3 text-sm font-semibold text-slate-700">${fmt_currency(o.total)}</td>
@@ -419,7 +433,7 @@ function render_order_detail_html(o) {
   const items_html = (o.items || []).map(i => `
     <div class="flex items-center justify-between py-2">
       <div class="min-w-0">
-        <div class="text-sm font-medium text-slate-700 truncate">${i.product_name || i.name}</div>
+        <div class="text-sm font-medium text-slate-700 truncate">${escHtml(i.product_name || i.name)}</div>
         <div class="text-xs text-slate-400">Qty: ${i.qty}</div>
       </div>
       <span class="text-sm font-semibold text-slate-700 flex-shrink-0 ml-2">${fmt_currency(i.unit_price * i.qty)}</span>
@@ -433,9 +447,11 @@ function render_order_detail_html(o) {
     </div>
   `).join('') || '<div class="text-xs text-slate-400">No history available</div>';
 
-  const tracking_html = o.tracking_url
-    ? `<a href="${o.tracking_url}" target="_blank" rel="noopener" class="text-xs text-amber-600 hover:text-amber-700 underline break-all">${o.tracking_url}</a>`
-    : '<span class="text-xs text-slate-400">No tracking info</span>';
+  const tracking_html = o.tracking_url && o.tracking_url.startsWith('https://')
+    ? `<a href="${escAttr(o.tracking_url)}" target="_blank" rel="noopener" class="text-xs text-amber-600 hover:text-amber-700 underline break-all">${escHtml(o.tracking_url)}</a>`
+    : o.tracking_url
+      ? `<span class="text-xs text-slate-500 break-all">${escHtml(o.tracking_url)}</span>`
+      : '<span class="text-xs text-slate-400">No tracking info</span>';
 
   return `
     <div>
@@ -448,9 +464,9 @@ function render_order_detail_html(o) {
 
     <div class="border border-slate-200 rounded-lg p-3">
       <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Customer</div>
-      <div class="text-sm font-medium text-slate-800">${o.customer?.name || '—'}</div>
-      <div class="text-xs text-slate-500">${o.customer?.phone || ''}</div>
-      <div class="text-xs text-slate-500">${o.customer?.email || ''}</div>
+      <div class="text-sm font-medium text-slate-800">${escHtml(o.customer?.name || '—')}</div>
+      <div class="text-xs text-slate-500">${escHtml(o.customer?.phone || '')}</div>
+      <div class="text-xs text-slate-500">${escHtml(o.customer?.email || '')}</div>
     </div>
 
     <div class="border border-slate-200 rounded-lg p-3">
@@ -565,13 +581,13 @@ function render_escalations() {
               </svg>
             </div>
             <div>
-              <div class="text-sm font-semibold text-slate-800">${e.customer_phone || '—'}</div>
+              <div class="text-sm font-semibold text-slate-800">${escHtml(e.customer_phone || '—')}</div>
               <div class="text-xs text-slate-500">${fmt_datetime(e.created_at)} &bull; ${time_ago(e.created_at)}</div>
             </div>
           </div>
           <div class="flex items-center gap-2">
             ${status_badge(display_status)}
-            ${is_open ? `<button onclick="AdminApp.quick_resolve('${e.id}')" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-sm">
+            ${is_open ? `<button onclick="AdminApp.quick_resolve('${escAttr(e.id)}')" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-sm">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
               Resolve
             </button>` : ''}
@@ -580,15 +596,15 @@ function render_escalations() {
         <div class="px-5 py-4 space-y-3">
           <div>
             <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Reason</span>
-            <p class="text-sm text-red-700 font-medium mt-0.5">${e.reason || '—'}</p>
+            <p class="text-sm text-red-700 font-medium mt-0.5">${escHtml(e.reason || '—')}</p>
           </div>
           <div>
             <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Summary</span>
-            <p class="text-sm text-slate-700 mt-0.5 leading-relaxed">${e.summary || '—'}</p>
+            <p class="text-sm text-slate-700 mt-0.5 leading-relaxed">${escHtml(e.summary || '—')}</p>
           </div>
           ${is_open ? `
           <div class="flex flex-wrap gap-2 pt-1">
-            <button onclick="AdminApp.send_apology('${e.id}', '${e.customer_phone || ''}', this)" class="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-sm">
+            <button onclick="AdminApp.send_apology('${e.id}', '${escAttr(e.customer_phone || '')}', this)" class="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-sm">
               <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.79 23.329l4.47-1.463A11.937 11.937 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818c-2.168 0-4.19-.587-5.932-1.61l-.424-.254-2.65.868.89-2.582-.278-.442A9.772 9.772 0 012.182 12c0-5.415 4.403-9.818 9.818-9.818S21.818 6.585 21.818 12 17.415 21.818 12 21.818z"/></svg>
               Send Apology &amp; Refund via WhatsApp
             </button>
@@ -596,8 +612,8 @@ function render_escalations() {
           ${e.resolution ? `
           <div class="p-3 bg-green-50 rounded-lg border border-green-200">
             <span class="text-xs font-semibold text-green-700 uppercase tracking-wide">Resolution</span>
-            <p class="text-sm text-green-800 mt-0.5">${e.resolution}</p>
-            ${e.action_taken ? `<span class="inline-block mt-1 text-xs font-medium text-green-600 bg-green-100 px-2 py-0.5 rounded-full">${e.action_taken.replace(/_/g,' ')}</span>` : ''}
+            <p class="text-sm text-green-800 mt-0.5">${escHtml(e.resolution)}</p>
+            ${e.action_taken ? `<span class="inline-block mt-1 text-xs font-medium text-green-600 bg-green-100 px-2 py-0.5 rounded-full">${escHtml(e.action_taken.replace(/_/g,' '))}</span>` : ''}
           </div>` : ''}
           ${(e.message_thread && e.message_thread.length) ? `
           <div>
@@ -606,7 +622,7 @@ function render_escalations() {
               ${e.message_thread.map(m => `
                 <div class="flex ${m.role === 'customer' ? 'justify-start' : 'justify-end'}">
                   <div class="max-w-xs px-3 py-2 rounded-xl text-xs ${m.role === 'customer' ? 'bg-slate-100 text-slate-700' : 'bg-amber-500 text-white'}">
-                    ${m.content}
+                    ${escHtml(m.content)}
                     <div class="text-xs opacity-60 mt-0.5">${time_ago(m.timestamp)}</div>
                   </div>
                 </div>
@@ -679,19 +695,19 @@ async function load_products() {
       return `
         <tr class="hover:bg-slate-50 transition-colors ${p.stock_qty === 0 ? 'bg-red-50/40' : low ? 'bg-amber-50/40' : ''}">
           <td class="px-4 py-3">
-            <div class="text-sm font-medium text-slate-800">${p.name}</div>
+            <div class="text-sm font-medium text-slate-800">${escHtml(p.name)}</div>
           </td>
           <td class="px-4 py-3 hidden md:table-cell">
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 capitalize">${p.category}</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 capitalize">${escHtml(p.category)}</span>
           </td>
-          <td class="px-4 py-3 hidden lg:table-cell text-sm text-slate-600">${p.size || '—'}</td>
-          <td class="px-4 py-3 hidden lg:table-cell text-sm text-slate-600">${p.color || '—'}</td>
+          <td class="px-4 py-3 hidden lg:table-cell text-sm text-slate-600">${escHtml(p.size || '—')}</td>
+          <td class="px-4 py-3 hidden lg:table-cell text-sm text-slate-600">${escHtml(p.color || '—')}</td>
           <td class="px-4 py-3 text-sm font-semibold text-slate-700">${fmt_currency(p.price)}</td>
           <td class="px-4 py-3">
             <div class="flex items-center gap-2">
               <span class="text-sm font-medium ${p.stock_qty === 0 ? 'text-red-600' : low ? 'text-amber-600' : 'text-slate-700'}">${p.stock_qty}</span>
               ${p.stock_qty === 0 ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-700">Out</span>' : low ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700">Low</span>' : ''}
-              ${p.stock_qty < 5 ? `<button onclick="AdminApp.mock_action('restock_product', '${p.id}', '${(p.name || '').replace(/'/g, '')}', this)" class="ml-1 px-2 py-0.5 text-xs font-semibold bg-slate-700 hover:bg-slate-800 text-white rounded transition-colors">Restock</button>` : ''}
+              ${p.stock_qty < 5 ? `<button onclick="AdminApp.mock_action('restock_product', '${p.id}', '${escAttr(p.name || '')}', this)" class="ml-1 px-2 py-0.5 text-xs font-semibold bg-slate-700 hover:bg-slate-800 text-white rounded transition-colors">Restock</button>` : ''}
             </div>
           </td>
         </tr>
@@ -736,17 +752,17 @@ function render_memory(memories) {
               </svg>
             </div>
             <div class="min-w-0">
-              <div class="text-sm font-semibold text-slate-800">${m.customer_phone || '—'}</div>
+              <div class="text-sm font-semibold text-slate-800">${escHtml(m.customer_phone || '—')}</div>
               <div class="text-xs text-slate-400">${fmt_date(m.created_at)}</div>
             </div>
           </div>
-          ${m.interaction_type ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 flex-shrink-0 capitalize">${m.interaction_type}</span>` : ''}
+          ${m.interaction_type ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 flex-shrink-0 capitalize">${escHtml(m.interaction_type)}</span>` : ''}
         </div>
         <div class="mt-3 space-y-2">
-          ${m.summary ? `<div><span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Summary</span><p class="text-sm text-slate-700 mt-0.5 leading-relaxed">${m.summary}</p></div>` : ''}
-          ${m.resolution ? `<div><span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Resolution</span><p class="text-sm text-slate-700 mt-0.5">${m.resolution}</p></div>` : ''}
+          ${m.summary ? `<div><span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Summary</span><p class="text-sm text-slate-700 mt-0.5 leading-relaxed">${escHtml(m.summary)}</p></div>` : ''}
+          ${m.resolution ? `<div><span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Resolution</span><p class="text-sm text-slate-700 mt-0.5">${escHtml(m.resolution)}</p></div>` : ''}
           ${tags.length ? `<div class="flex flex-wrap gap-1.5 mt-2">
-            ${tags.map(t => `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">${t}</span>`).join('')}
+            ${tags.map(t => `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">${escHtml(t)}</span>`).join('')}
           </div>` : ''}
         </div>
       </div>
