@@ -24,11 +24,11 @@ const app = new App();
 new ClawBoutiqueStack(app, "ClawBoutiqueStack", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION,
+    region: "us-east-1",
   },
   description:
-    "Claw Boutique: SNS inbound topic, Lambda dispatcher, SES receipt rules, " +
-    "Lightsail IAM role, and Secrets Manager DB credentials",
+    "Claw Boutique: SNS, Lambda dispatcher, EKS (OpenClaw), RDS MySQL, " +
+    "Bedrock Agent, S3/CloudFront, and API Gateway",
 });
 
 // Apply cost-allocation and ownership tags to every resource in the app.

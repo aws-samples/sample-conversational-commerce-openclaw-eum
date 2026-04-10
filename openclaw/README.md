@@ -21,39 +21,36 @@ openclaw/
 
 ---
 
-## 1. Deploy on Lightsail
+## 1. Deploy on EKS
 
-### One-time blueprint setup
+OpenClaw runs as a Docker container on EKS. CDK handles the full deployment automatically, including building the image, pushing it to ECR, and creating the Kubernetes Deployment, Service, and ConfigMap.
 
-1. Create a Lightsail instance using the **OS Only > Amazon Linux 2023** blueprint (minimum 2 GB RAM recommended).
-2. Open ports **8443** (HTTPS/OpenClaw gateway) and **22** (SSH) in the Lightsail firewall under **Networking > IPv4 firewall**.
-3. SSH into the instance:
-   ```
-   ssh -i ~/.ssh/your-key.pem ec2-user@<instance-ip>
-   ```
-4. Install Docker:
-   ```
-   sudo yum update -y
-   sudo yum install -y docker
-   sudo systemctl enable --now docker
-   sudo usermod -aG docker ec2-user
-   ```
-   Log out and back in so the group change takes effect.
-5. Install OpenClaw (follow the official OpenClaw install docs or your internal package step).
-6. Copy this entire `openclaw/` directory to the instance:
-   ```
-   scp -i ~/.ssh/your-key.pem -r ./openclaw ec2-user@<instance-ip>:/opt/claw-boutique/openclaw
-   ```
-7. Build the tools Docker image:
-   ```
-   cd /opt/claw-boutique/openclaw/tools
-   docker build -t claw-boutique/openclaw-tools:latest .
-   ```
-8. Populate the environment file (see Section 3 below), then start the gateway:
-   ```
-   openclaw start --config /opt/claw-boutique/openclaw/openclaw.json
-   ```
-9. Point your WhatsApp webhook at `https://<instance-ip>:8443/webhook/whatsapp`.
+### What CDK does
+
+- Builds the Docker image from `docker/openclaw/Dockerfile`.
+- Pushes the image to ECR.
+- Creates a Kubernetes ConfigMap from `openclaw/openclaw.json`.
+- Injects all required environment variables into the Deployment (DB credentials, Telegram token, WhatsApp IDs, etc.).
+- Exposes the gateway via a Kubernetes LoadBalancer Service on port 18789.
+
+### Deploy
+
+```bash
+npx cdk deploy --profile claude-code \
+  -c telegramBotToken="<token>" \
+  -c telegramSellerId="<id>" \
+  -c whatsappPhoneNumberId="<id>" \
+  -c whatsappWabaId="<id>"
+```
+
+CDK connects to the `claw-boutique` EKS cluster and applies all Kubernetes manifests. No manual SSH, no firewall rules, no instance setup.
+
+### Verify the pod is running
+
+```bash
+kubectl get pods -n openclaw
+kubectl logs -n openclaw -l app=openclaw --tail=50
+```
 
 ---
 
@@ -86,46 +83,38 @@ All tool scripts read database credentials from environment variables. Never har
 
 | Variable | Description | Example |
 |---|---|---|
-| `DB_HOST` | MySQL/MariaDB host | `db.internal` or `127.0.0.1` |
+| `DB_HOST` | RDS endpoint | `clawboutiquestack-....rds.amazonaws.com` |
 | `DB_USER` | Database user | `clawbot` |
-| `DB_PASSWORD` | Database password | (from secrets manager) |
+| `DB_PASSWORD` | Database password | (from Secrets Manager) |
 | `DB_NAME` | Database name | `claw_boutique` |
 
-### Setting variables on Lightsail
+### How variables are injected
 
-Create `/opt/claw-boutique/.env` (readable only by the service user):
+CDK reads the RDS endpoint and credentials from the stack and injects them directly into the EKS Deployment as environment variables. You do not manage a `.env` file on a server.
+
+The full set of variables CDK injects:
 
 ```
-DB_HOST=your-rds-or-lightsail-db-host
-DB_USER=clawbot
-DB_PASSWORD=supersecretpassword
+DB_HOST              # RDS endpoint (set automatically from stack outputs)
+DB_USER              # from Secrets Manager
+DB_PASSWORD          # from Secrets Manager
 DB_NAME=claw_boutique
 
-WHATSAPP_PHONE_NUMBER_ID=1234567890
-
-AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
-AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
-AWS_REGION=ap-southeast-1
+WHATSAPP_PHONE_NUMBER_ID   # from CDK context
+AWS_REGION=us-east-1
 SES_FROM_EMAIL=orders@clawboutique.ph
 SES_FROM_NAME=Claw Boutique
 
 SELLER_NAME=Ate Claire
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+TELEGRAM_BOT_TOKEN         # from CDK context
+TELEGRAM_SELLER_ID         # from CDK context
 
-OPENCLAW_GATEWAY_TOKEN=your_daily_rotated_token
-REDIS_HOST=127.0.0.1
-REDIS_PASSWORD=
-```
-
-Restrict permissions:
-```
-chmod 600 /opt/claw-boutique/.env
+OPENCLAW_GATEWAY_TOKEN     # generated and stored in Secrets Manager
+REDIS_HOST                 # set automatically from stack outputs
+REDIS_PASSWORD             # from Secrets Manager
 ```
 
-Start the gateway with the env file:
-```
-openclaw start --config /opt/claw-boutique/openclaw/openclaw.json --env-file /opt/claw-boutique/.env
-```
+To change a value, update the CDK stack or context parameter and redeploy. The pod restarts automatically with the new values.
 
 ---
 
@@ -194,19 +183,18 @@ All tools output a JSON object to stdout. An `{"error": "..."}` key indicates fa
 
 ## 5. Update the System Prompt
 
-The system prompt drives ClawBot's personality, rules, and capabilities. It lives in `system-prompt.md` and is loaded at gateway startup.
+The system prompt drives ClawBot's personality, rules, and capabilities. It lives in `system-prompt.md` and is loaded at gateway startup via the Kubernetes ConfigMap.
 
 To update it:
 
 1. Edit `system-prompt.md` with your changes.
-2. Reload the OpenClaw config without a full restart:
-   ```
-   openclaw reload --config /opt/claw-boutique/openclaw/openclaw.json
-   ```
-   Or, if hot-reload is not available, do a graceful restart:
-   ```
-   openclaw stop --config /opt/claw-boutique/openclaw/openclaw.json
-   openclaw start --config /opt/claw-boutique/openclaw/openclaw.json --env-file /opt/claw-boutique/.env
+2. Redeploy with CDK (or just re-apply the ConfigMap and restart the pod):
+   ```bash
+   # Option A: full CDK redeploy (also picks up any other changes)
+   npx cdk deploy --profile claude-code -c ...
+
+   # Option B: restart the pod to pick up a ConfigMap-only change
+   kubectl rollout restart deployment/openclaw -n openclaw
    ```
 3. Active conversations pick up the new prompt on the next message. In-flight tool calls use the prompt that was active when the conversation started.
 
@@ -216,24 +204,13 @@ To update it:
 
 ## 6. Token Rotation
 
-The gateway token (`OPENCLAW_GATEWAY_TOKEN`) rotates daily. Update the env file and reload:
+The gateway token (`OPENCLAW_GATEWAY_TOKEN`) rotates daily. It is stored in AWS Secrets Manager. A scheduled Lambda (or EventBridge rule) generates a new token, updates the secret, and triggers a rolling restart of the pod:
 
 ```bash
-# Generate a new token
-NEW_TOKEN=$(openssl rand -hex 32)
-
-# Update the env file
-sed -i "s/^OPENCLAW_GATEWAY_TOKEN=.*/OPENCLAW_GATEWAY_TOKEN=$NEW_TOKEN/" /opt/claw-boutique/.env
-
-# Reload the gateway (picks up new env var)
-openclaw reload --config /opt/claw-boutique/openclaw/openclaw.json
+kubectl rollout restart deployment/openclaw -n openclaw
 ```
 
-Automate this with a cron job running at midnight:
-
-```
-0 0 * * * /opt/claw-boutique/scripts/rotate_token.sh >> /var/log/openclaw_token_rotation.log 2>&1
-```
+The pod pulls the new token from Secrets Manager at startup. No manual file editing required.
 
 ---
 
@@ -241,9 +218,11 @@ Automate this with a cron job running at midnight:
 
 | Symptom | Check |
 |---|---|
-| Tool returns `{"error": "Missing required environment variable: DB_HOST"}` | Verify the `.env` file is loaded and the variable is set |
+| Tool returns `{"error": "Missing required environment variable: DB_HOST"}` | Run `kubectl describe pod -n openclaw <pod>` and verify the env vars are present; check CDK deployed with the correct context values |
+| Pod stuck in `CrashLoopBackOff` | `kubectl logs -n openclaw <pod> --previous` to see the last crash output |
 | WhatsApp messages not sending | Verify `WHATSAPP_PHONE_NUMBER_ID` is correct and EUMS is configured |
 | Emails not arriving | Check SES sandbox mode; verify `SES_FROM_EMAIL` is a verified identity |
-| Gateway returns 401 | `OPENCLAW_GATEWAY_TOKEN` may have rotated; update the calling service |
-| Seller commands not recognised | Verify `TELEGRAM_BOT_TOKEN` is set and the Telegram bot is active |
+| Gateway returns 401 | `OPENCLAW_GATEWAY_TOKEN` may have rotated; update the calling service or restart the pod to pull the latest secret |
+| Seller commands not recognised | Verify `TELEGRAM_BOT_TOKEN` and `TELEGRAM_SELLER_ID` are set in the Deployment; check `kubectl logs -n openclaw -l app=openclaw` |
+| Cannot reach RDS | `DB_HOST` must be the RDS endpoint (not `localhost`); verify the EKS node security group allows outbound to the RDS security group on port 3306 |
 | Docker sandbox timeout | Increase `execution_timeout_seconds` in `openclaw.json`; check DB connectivity from within the container |

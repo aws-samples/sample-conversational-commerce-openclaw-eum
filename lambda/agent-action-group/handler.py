@@ -6,7 +6,7 @@ to the Store API. Uses only stdlib — no external dependencies required.
 
 Environment variables:
   STORE_API_URL  Base URL of the Store API, e.g.
-                 https://h08zylpngj.execute-api.us-east-1.amazonaws.com/prod
+                 https://jsy1qw47dk.execute-api.us-east-1.amazonaws.com/prod
 """
 import json
 import os

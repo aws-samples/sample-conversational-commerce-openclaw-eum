@@ -74,7 +74,7 @@
   // Store API — tools call the Store API via HTTP instead of connecting to MySQL directly
   // ---------------------------------------------------------------------------
   "store_api": {
-    "_comment": "All tool scripts read STORE_API_URL and optionally STORE_API_KEY. Set them in your Lightsail instance or .env file.",
+    "_comment": "All tool scripts read STORE_API_URL and optionally STORE_API_KEY. Set them as environment variables in the EKS pod or .env file.",
     "url_env": "STORE_API_URL",
     "key_env": "STORE_API_KEY"
   },

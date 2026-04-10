@@ -62,3 +62,4 @@ docs/.$*.bkp
 .gstack/
 .playwright-mcp/
 generated-diagrams/
+cdk/cdk.context.json

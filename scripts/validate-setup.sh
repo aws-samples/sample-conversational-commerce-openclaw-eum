@@ -64,18 +64,12 @@ fi
 
 REGION="${AWS_REGION:-${REGION:-us-east-1}}"
 STACK_NAME="${CDK_STACK_NAME:-ClawBoutiqueStack}"
-LIGHTSAIL_IP="${LIGHTSAIL_INSTANCE_IP:-}"
-LIGHTSAIL_USER="${LIGHTSAIL_INSTANCE_USER:-ec2-user}"
+EKS_CLUSTER_NAME="${EKS_CLUSTER_NAME:-claw-boutique}"
 DB_HOST="${DB_HOST:-}"
 DB_PORT="${DB_PORT:-3306}"
 DB_USER="${DB_USER:-}"
 DB_PASSWORD="${DB_PASSWORD:-}"
 DB_NAME="${DB_NAME:-claw_boutique}"
-
-SSH_KEY_ARGS=""
-if [[ -n "${LIGHTSAIL_SSH_KEY_PATH:-}" && -f "${LIGHTSAIL_SSH_KEY_PATH}" ]]; then
-    SSH_KEY_ARGS="-i ${LIGHTSAIL_SSH_KEY_PATH}"
-fi
 
 echo ""
 echo -e "${BOLD}${CYAN}╔══════════════════════════════════════════════════════════════╗${RESET}"
@@ -85,7 +79,7 @@ echo ""
 info "Region      : ${REGION}"
 info "Stack       : ${STACK_NAME}"
 info "Outputs     : ${OUTPUTS_FILE}"
-info "Lightsail   : ${LIGHTSAIL_IP:-<not set>}"
+info "EKS cluster : ${EKS_CLUSTER_NAME}"
 info "DB host     : ${DB_HOST:-<not set>}"
 echo ""
 
@@ -392,59 +386,33 @@ else
 fi
 
 # =============================================================================
-# CHECK 6 — OpenClaw instance reachable on port 8443
+# CHECK 6 — OpenClaw pods running on EKS
 # =============================================================================
-section "OpenClaw (${LIGHTSAIL_IP:-<not set>})"
+section "OpenClaw (EKS cluster: ${EKS_CLUSTER_NAME})"
 
-if [[ -n "${LIGHTSAIL_IP}" ]]; then
-    # TCP check on port 8443
-    if command -v nc &>/dev/null; then
-        if nc -z -w 5 "${LIGHTSAIL_IP}" 8443 2>/dev/null; then
-            chk_pass "OpenClaw port 8443 is open and reachable at ${LIGHTSAIL_IP}"
-        else
-            chk_fail "OpenClaw port 8443 is NOT reachable at ${LIGHTSAIL_IP} — is the service running? Is the Lightsail firewall open?"
-        fi
-    elif command -v curl &>/dev/null; then
-        # Fallback: HTTPS check (will fail TLS cert but we just want TCP open)
-        HTTP_CODE=$(curl -sk -o /dev/null -w "%{http_code}" \
-            --connect-timeout 5 \
-            "https://${LIGHTSAIL_IP}:8443/health" 2>/dev/null || echo "000")
-        if [[ "${HTTP_CODE}" != "000" ]]; then
-            chk_pass "OpenClaw port 8443 is responding at ${LIGHTSAIL_IP} (HTTP ${HTTP_CODE})"
-        else
-            chk_fail "OpenClaw port 8443 is NOT responding at ${LIGHTSAIL_IP} — is the service running?"
-        fi
-    else
-        chk_warn "Neither 'nc' nor 'curl' available — cannot test port 8443 reachability"
-    fi
+if command -v kubectl &>/dev/null; then
+    # Update kubeconfig silently
+    aws eks update-kubeconfig \
+        --name "${EKS_CLUSTER_NAME}" \
+        --region "${REGION}" &>/dev/null 2>&1 \
+        || true
 
-    # SSH check
-    SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes ${SSH_KEY_ARGS}"
-    if ssh ${SSH_OPTS} "${LIGHTSAIL_USER}@${LIGHTSAIL_IP}" "echo ok" &>/dev/null 2>&1; then
-        chk_pass "SSH connection to ${LIGHTSAIL_USER}@${LIGHTSAIL_IP} succeeded"
+    POD_LIST=$(kubectl get pods -n default -l app=openclaw \
+        --no-headers 2>/dev/null || echo "")
 
-        # Check openclaw files are present
-        OPENCLAW_PRESENT=$(ssh ${SSH_OPTS} "${LIGHTSAIL_USER}@${LIGHTSAIL_IP}" \
-            "test -f ~/openclaw/openclaw.json && echo yes || echo no" 2>/dev/null || echo "no")
-        if [[ "${OPENCLAW_PRESENT}" == "yes" ]]; then
-            chk_pass "openclaw/openclaw.json found on Lightsail instance"
+    if [[ -n "${POD_LIST}" ]]; then
+        RUNNING_COUNT=$(echo "${POD_LIST}" | grep -c "Running" || true)
+        TOTAL_COUNT=$(echo "${POD_LIST}" | wc -l | tr -d ' ')
+        if [[ "${RUNNING_COUNT}" -gt 0 ]]; then
+            chk_pass "OpenClaw: ${RUNNING_COUNT}/${TOTAL_COUNT} pod(s) Running on EKS cluster '${EKS_CLUSTER_NAME}'"
         else
-            chk_fail "openclaw/openclaw.json NOT found on Lightsail — re-run deploy.sh step 8"
-        fi
-
-        # Check .env is present
-        ENV_PRESENT=$(ssh ${SSH_OPTS} "${LIGHTSAIL_USER}@${LIGHTSAIL_IP}" \
-            "test -f ~/.env && echo yes || echo no" 2>/dev/null || echo "no")
-        if [[ "${ENV_PRESENT}" == "yes" ]]; then
-            chk_pass "~/.env present on Lightsail instance"
-        else
-            chk_fail "~/.env NOT found on Lightsail — re-run deploy.sh step 9"
+            chk_fail "OpenClaw pods found but none are Running — check: kubectl get pods -n default -l app=openclaw"
         fi
     else
-        chk_warn "SSH to ${LIGHTSAIL_USER}@${LIGHTSAIL_IP} failed — skipping remote file checks"
+        chk_fail "No OpenClaw pods found on EKS cluster '${EKS_CLUSTER_NAME}' — check CDK deploy completed successfully"
     fi
 else
-    chk_warn "LIGHTSAIL_INSTANCE_IP not set — skipping OpenClaw checks"
+    chk_warn "kubectl not found — skipping EKS pod check"
 fi
 
 # =============================================================================
@@ -489,7 +457,7 @@ if [[ "${FAIL}" -gt 0 ]]; then
     echo "  - WABA not linked to SNS: configure in AWS End User Messaging Social console"
     echo "  - Lambda env vars missing: run 'aws lambda update-function-configuration'"
     echo "  - DB tables missing: run 'bash scripts/setup-db.sh'"
-    echo "  - OpenClaw not reachable: SSH in and start the OpenClaw service"
+    echo "  - OpenClaw not running: check EKS pods with 'kubectl get pods -n default -l app=openclaw'"
     echo "  - SES domain pending: add CNAME/TXT/MX DNS records for your domain"
     echo ""
     exit 1

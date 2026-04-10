@@ -35,9 +35,7 @@ REQUIRED_VARS=(
   AWS_ACCOUNT_ID
   AWS_PROFILE
   CDK_STACK_NAME
-  LIGHTSAIL_INSTANCE_IP
-  LIGHTSAIL_INSTANCE_USER
-  LIGHTSAIL_SSH_KEY_PATH
+  EKS_CLUSTER_NAME
   DB_HOST
   DB_PORT
   DB_USER
@@ -54,7 +52,7 @@ REQUIRED_VARS=(
 MISSING=()
 for var in "${REQUIRED_VARS[@]}"; do
   val="${!var:-}"
-  if [ -z "$val" ] || [[ "$val" == *"your_"* ]] || [[ "$val" == "123456789012" ]] || [[ "$val" == "1.2.3.4" ]]; then
+  if [ -z "$val" ] || [[ "$val" == *"your_"* ]] || [[ "$val" == "123456789012" ]]; then
     MISSING+=("$var")
   fi
 done
@@ -110,10 +108,7 @@ echo " AWS Region     : $AWS_REGION"
 echo " AWS Account    : $AWS_ACCOUNT_ID"
 echo " AWS Profile    : $AWS_PROFILE"
 echo " CDK Stack      : $CDK_STACK_NAME"
-echo ""
-echo " Lightsail IP   : $LIGHTSAIL_INSTANCE_IP"
-echo " SSH User       : $LIGHTSAIL_INSTANCE_USER"
-echo " SSH Key        : $LIGHTSAIL_SSH_KEY_PATH"
+echo " EKS Cluster    : $EKS_CLUSTER_NAME"
 echo ""
 echo " DB Host        : $DB_HOST:$DB_PORT"
 echo " DB Name        : $DB_NAME"

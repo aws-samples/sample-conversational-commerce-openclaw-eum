@@ -1,7 +1,7 @@
 {
   "name": "claw-boutique-cdk",
   "version": "1.0.0",
-  "description": "CDK infrastructure for Claw Boutique: SNS inbound topic, Lambda dispatcher, SES domain, Lightsail IAM role, and Secrets Manager",
+  "description": "CDK infrastructure for Claw Boutique: SNS, Lambda, EKS, RDS MySQL, Bedrock, and Secrets Manager",
   "bin": {
     "claw-boutique": "bin/app.js"
   },
@@ -25,7 +25,7 @@
     "typescript": "~5.4.5"
   },
   "dependencies": {
-    "@aws-cdk/aws-lightsail": "^1.204.0",
+    "@aws-cdk/lambda-layer-kubectl-v30": "^2.0.4",
     "aws-cdk-lib": "^2.170.0",
     "constructs": "^10.0.0",
     "source-map-support": "^0.5.21"

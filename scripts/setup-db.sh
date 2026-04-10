@@ -6,7 +6,7 @@
 # then validates all tables and prints a summary.
 #
 # Usage (env vars):
-#   export DB_HOST=your-lightsail-endpoint.example.com
+#   export DB_HOST=your-rds-endpoint.example.com
 #   export DB_USER=admin
 #   export DB_PASSWORD=secret
 #   export DB_NAME=claw_boutique   # optional, default: claw_boutique

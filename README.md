@@ -2,7 +2,7 @@
 
 AI-powered WhatsApp e-commerce bot built on AWS. Customers browse and order through a web storefront, then receive WhatsApp messages and emails for order confirmation, surveys, and refunds. The store owner manages everything through Telegram, where an AI agent (Claude on EKS) handles restock, refund, and order commands.
 
-![Architecture](docs/architecture.png)
+![Architecture](docs/architecture.drawio.png)
 
 ## How it works
 

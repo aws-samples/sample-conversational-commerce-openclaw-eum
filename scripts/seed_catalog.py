@@ -2,14 +2,14 @@
 """
 seed_catalog.py — Claw Boutique database seed script
 =====================================================
-Inserts 20 product SKUs and a handful of test customers into a Lightsail
-MySQL database. Safe to run multiple times (idempotent via INSERT IGNORE).
+Inserts 20 product SKUs and a handful of test customers into an RDS MySQL
+database. Safe to run multiple times (idempotent via INSERT IGNORE).
 
 Usage:
     python3 seed_catalog.py
 
 Required environment variables:
-    DB_HOST      — Lightsail MySQL endpoint hostname
+    DB_HOST      — RDS MySQL endpoint hostname
     DB_USER      — Database user
     DB_PASSWORD  — Database password
     DB_NAME      — Database name (default: claw_boutique)

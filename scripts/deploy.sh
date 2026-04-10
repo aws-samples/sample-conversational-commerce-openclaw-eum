@@ -4,15 +4,17 @@
 # =============================================================================
 #
 # Runs every step needed to go from a fresh checkout to a fully operational
-# ClawBot instance: CDK stack, Secrets Manager, RDS/MySQL, database seed,
-# Lambda zip, OpenClaw configuration on Lightsail, and final validation.
+# ClawBot instance: CDK stack (which builds and deploys OpenClaw to EKS),
+# Secrets Manager, RDS/MySQL, database seed, Lambda zip, and final validation.
 #
 # Usage:
 #   ./scripts/deploy.sh \
 #     --region ap-southeast-1 \
 #     --stack-name ClawBoutiqueStack \
-#     --openclw-instance-ip 1.2.3.4 \
-#     --openclw-instance-user ec2-user
+#     --telegram-bot-token <token> \
+#     --telegram-seller-id <id> \
+#     --whatsapp-phone-number-id <id> \
+#     --whatsapp-waba-id <id>
 #
 # All other values are read from the .env file in the repo root.
 # Copy .env.example to .env and fill in real values before running.
@@ -53,36 +55,41 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # ---------------------------------------------------------------------------
 REGION=""
 STACK_NAME=""
-OPENCLW_IP=""
-OPENCLW_USER=""
+TELEGRAM_BOT_TOKEN=""
+TELEGRAM_SELLER_ID=""
+WHATSAPP_PHONE_NUMBER_ID_ARG=""
+WHATSAPP_WABA_ID_ARG=""
 
 usage() {
-    echo "Usage: $0 --region <region> --stack-name <name> --openclw-instance-ip <ip> --openclw-instance-user <user>"
+    echo "Usage: $0 --region <region> --stack-name <name> --telegram-bot-token <token> --telegram-seller-id <id> --whatsapp-phone-number-id <id> --whatsapp-waba-id <id>"
     echo ""
-    echo "  --region               AWS region to deploy into (e.g. ap-southeast-1)"
-    echo "  --stack-name           CDK stack name (e.g. ClawBoutiqueStack)"
-    echo "  --openclw-instance-ip  Public IP of the Lightsail instance running OpenClaw"
-    echo "  --openclw-instance-user SSH username for the Lightsail instance (e.g. ec2-user)"
+    echo "  --region                  AWS region to deploy into (e.g. ap-southeast-1)"
+    echo "  --stack-name              CDK stack name (e.g. ClawBoutiqueStack)"
+    echo "  --telegram-bot-token      Telegram bot token for the seller channel"
+    echo "  --telegram-seller-id      Telegram chat ID of the seller"
+    echo "  --whatsapp-phone-number-id  Meta WhatsApp phone number ID"
+    echo "  --whatsapp-waba-id          Meta WhatsApp Business Account ID"
     echo ""
     echo "All other config is read from \$REPO_ROOT/.env — copy .env.example first."
+    echo "CDK handles Docker build, ECR push, and EKS deployment of OpenClaw automatically."
     exit 1
 }
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --region)               REGION="$2";       shift 2 ;;
-        --stack-name)           STACK_NAME="$2";   shift 2 ;;
-        --openclw-instance-ip)  OPENCLW_IP="$2";   shift 2 ;;
-        --openclw-instance-user) OPENCLW_USER="$2"; shift 2 ;;
-        -h|--help)              usage ;;
+        --region)                   REGION="$2";                    shift 2 ;;
+        --stack-name)               STACK_NAME="$2";                shift 2 ;;
+        --telegram-bot-token)       TELEGRAM_BOT_TOKEN="$2";        shift 2 ;;
+        --telegram-seller-id)       TELEGRAM_SELLER_ID="$2";        shift 2 ;;
+        --whatsapp-phone-number-id) WHATSAPP_PHONE_NUMBER_ID_ARG="$2"; shift 2 ;;
+        --whatsapp-waba-id)         WHATSAPP_WABA_ID_ARG="$2";      shift 2 ;;
+        -h|--help)                  usage ;;
         *)  die "Unknown argument: $1. Run with --help for usage." ;;
     esac
 done
 
 [[ -n "$REGION"      ]] || die "--region is required. Run with --help."
 [[ -n "$STACK_NAME"  ]] || die "--stack-name is required. Run with --help."
-[[ -n "$OPENCLW_IP"  ]] || die "--openclw-instance-ip is required. Run with --help."
-[[ -n "$OPENCLW_USER" ]] || die "--openclw-instance-user is required. Run with --help."
 
 # ---------------------------------------------------------------------------
 # Load .env file
@@ -106,8 +113,13 @@ set +o allexport
 # CLI args override .env values
 REGION="${REGION}"
 STACK_NAME="${STACK_NAME}"
-LIGHTSAIL_INSTANCE_IP="${OPENCLW_IP}"
-LIGHTSAIL_INSTANCE_USER="${OPENCLW_USER}"
+EKS_CLUSTER_NAME="${EKS_CLUSTER_NAME:-claw-boutique}"
+
+# CDK context values (CLI args take priority over .env)
+TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-${TELEGRAM_BOT_TOKEN:-}}"
+TELEGRAM_SELLER_ID="${TELEGRAM_SELLER_ID:-${TELEGRAM_SELLER_ID:-}}"
+WHATSAPP_PHONE_NUMBER_ID_ARG="${WHATSAPP_PHONE_NUMBER_ID_ARG:-${WHATSAPP_PHONE_NUMBER_ID:-}}"
+WHATSAPP_WABA_ID_ARG="${WHATSAPP_WABA_ID_ARG:-${WHATSAPP_WABA_ID:-}}"
 
 # Derived paths
 CDK_DIR="${REPO_ROOT}/cdk"
@@ -127,17 +139,16 @@ banner "╚═══════════════════════
 echo ""
 info "Region        : ${REGION}"
 info "Stack name    : ${STACK_NAME}"
-info "Lightsail IP  : ${LIGHTSAIL_INSTANCE_IP}"
-info "SSH user      : ${LIGHTSAIL_INSTANCE_USER}"
+info "EKS cluster   : ${EKS_CLUSTER_NAME}"
 info "Repo root     : ${REPO_ROOT}"
 echo ""
 
 # =============================================================================
 # STEP 1 — Validate prerequisites
 # =============================================================================
-step "1 of 11 — Validate prerequisites"
+step "1 of 9 — Validate prerequisites"
 
-REQUIRED_TOOLS=(aws node python3 mysql)
+REQUIRED_TOOLS=(aws node python3 mysql kubectl)
 MISSING_TOOLS=()
 for tool in "${REQUIRED_TOOLS[@]}"; do
     if command -v "$tool" &>/dev/null; then
@@ -197,7 +208,7 @@ success "All prerequisite checks passed"
 # =============================================================================
 # STEP 2 — Build and deploy CDK stack
 # =============================================================================
-step "2 of 11 — Deploy CDK stack (${STACK_NAME})"
+step "2 of 9 — Deploy CDK stack (${STACK_NAME})"
 
 info "Installing CDK dependencies..."
 (cd "${CDK_DIR}" && npm install --silent) \
@@ -211,19 +222,23 @@ info "Building Lambda dispatcher..."
 (cd "${LAMBDA_DIR}" && npm install --silent && npm run build) \
     || die "Lambda dispatcher build failed in ${LAMBDA_DIR}"
 
-info "Running: cdk deploy --require-approval never (this may take 3–5 minutes)..."
+info "Running: cdk deploy --require-approval never (this may take 5–10 minutes including Docker build and EKS deploy)..."
 (cd "${CDK_DIR}" && ${CDK_CMD} deploy "${STACK_NAME}" \
     --require-approval never \
     --region "${REGION}" \
-    --outputs-file "${OUTPUTS_FILE}") \
+    --outputs-file "${OUTPUTS_FILE}" \
+    -c telegramBotToken="${TELEGRAM_BOT_TOKEN}" \
+    -c telegramSellerId="${TELEGRAM_SELLER_ID}" \
+    -c whatsappPhoneNumberId="${WHATSAPP_PHONE_NUMBER_ID_ARG}" \
+    -c whatsappWabaId="${WHATSAPP_WABA_ID_ARG}") \
     || die "CDK deploy failed. Review CloudFormation events in the AWS console."
 
-success "CDK stack deployed successfully"
+success "CDK stack deployed successfully (OpenClaw Docker image built, pushed to ECR, and deployed to EKS)"
 
 # =============================================================================
 # STEP 3 — Capture stack outputs
 # =============================================================================
-step "3 of 11 — Capture stack outputs to ${OUTPUTS_FILE}"
+step "3 of 9 — Capture stack outputs to ${OUTPUTS_FILE}"
 
 [[ -f "${OUTPUTS_FILE}" ]] \
     || die "Expected CDK outputs file not found at ${OUTPUTS_FILE}. The deploy may have partially failed."
@@ -249,16 +264,6 @@ for k, v in stack.items():
 print('ClawBoutiqueDispatcher'); sys.exit(0)
 ")
 
-LIGHTSAIL_ROLE_ARN=$(python3 -c "
-import json, sys
-data = json.load(open('${OUTPUTS_FILE}'))
-stack = data.get('${STACK_NAME}', {})
-for k, v in stack.items():
-    if 'LightsailRoleArn' in k:
-        print(v); sys.exit(0)
-print(''); sys.exit(0)
-")
-
 DB_SECRET_ARN=$(python3 -c "
 import json, sys
 data = json.load(open('${OUTPUTS_FILE}'))
@@ -271,14 +276,13 @@ print(''); sys.exit(0)
 
 info "SNS Topic ARN       : ${SNS_TOPIC_ARN:-<not found>}"
 info "Dispatcher function : ${DISPATCHER_FN:-<not found>}"
-info "Lightsail role ARN  : ${LIGHTSAIL_ROLE_ARN:-<not found>}"
 info "DB secret ARN       : ${DB_SECRET_ARN:-<not found>}"
 success "Stack outputs captured"
 
 # =============================================================================
 # STEP 4 — Create / update Secrets Manager secret with DB credentials
 # =============================================================================
-step "4 of 11 — Upsert Secrets Manager secret (ClawBoutique/DbCredentials)"
+step "4 of 9 — Upsert Secrets Manager secret (ClawBoutique/DbCredentials)"
 
 SECRET_NAME="ClawBoutique/DbCredentials"
 SECRET_VALUE=$(python3 -c "import json; print(json.dumps({
@@ -316,7 +320,7 @@ fi
 # =============================================================================
 # STEP 5 — Create MySQL database if it does not exist
 # =============================================================================
-step "5 of 11 — Ensure MySQL database '${DB_NAME}' exists and schema is applied"
+step "5 of 9 — Ensure MySQL database '${DB_NAME}' exists and schema is applied"
 
 info "Testing database connectivity to ${DB_HOST}:${DB_PORT:-3306}..."
 mysql \
@@ -357,7 +361,7 @@ success "Schema applied (idempotent — IF NOT EXISTS used throughout)"
 # =============================================================================
 # STEP 6 — Seed the database catalog
 # =============================================================================
-step "6 of 11 — Seed product catalog (seed_catalog.py)"
+step "6 of 9 — Seed product catalog (seed_catalog.py)"
 
 info "Running seed_catalog.py — safe to re-run (INSERT IGNORE)..."
 export DB_HOST DB_PORT DB_USER DB_PASSWORD DB_NAME
@@ -369,7 +373,7 @@ success "Catalog seeded (20 products, 3 test customers)"
 # =============================================================================
 # STEP 7 — Build Lambda zip and print console instruction
 # =============================================================================
-step "7 of 11 — Package Lambda dispatcher"
+step "7 of 9 — Package Lambda dispatcher"
 
 LAMBDA_DIST="${LAMBDA_DIR}/dist"
 LAMBDA_ZIP="${LAMBDA_DIR}/claw-boutique-dispatcher.zip"
@@ -403,119 +407,26 @@ echo "    3. Upload: ${LAMBDA_ZIP}"
 echo ""
 
 # =============================================================================
-# STEP 8 — Copy openclaw/ directory to Lightsail instance
+# STEP 8 — Verify OpenClaw is running on EKS
 # =============================================================================
-step "8 of 11 — Copy openclaw/ to Lightsail (${LIGHTSAIL_INSTANCE_IP})"
+step "8 of 9 — Verify OpenClaw deployment on EKS (${EKS_CLUSTER_NAME})"
 
-SSH_KEY_ARGS=""
-if [[ -n "${LIGHTSAIL_SSH_KEY_PATH:-}" && -f "${LIGHTSAIL_SSH_KEY_PATH}" ]]; then
-    SSH_KEY_ARGS="-i ${LIGHTSAIL_SSH_KEY_PATH}"
-    info "Using SSH key: ${LIGHTSAIL_SSH_KEY_PATH}"
-else
-    warn "LIGHTSAIL_SSH_KEY_PATH not set or file not found — using default SSH key (~/.ssh/id_rsa)"
-fi
+info "Updating kubeconfig for EKS cluster ${EKS_CLUSTER_NAME}..."
+aws eks update-kubeconfig \
+    --name "${EKS_CLUSTER_NAME}" \
+    --region "${REGION}" \
+    || warn "Could not update kubeconfig — ensure the EKS cluster exists and IAM permissions are set."
 
-SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=15 ${SSH_KEY_ARGS}"
+info "Checking OpenClaw pod status..."
+kubectl get pods -n default -l app=openclaw 2>/dev/null \
+    || warn "No openclaw pods found — CDK deploy may still be rolling out. Check: kubectl get pods -n default"
 
-info "Testing SSH connectivity to ${LIGHTSAIL_INSTANCE_USER}@${LIGHTSAIL_INSTANCE_IP}..."
-# shellcheck disable=SC2086
-ssh ${SSH_OPTS} \
-    "${LIGHTSAIL_INSTANCE_USER}@${LIGHTSAIL_INSTANCE_IP}" \
-    "echo ssh_ok" \
-    || die "SSH connection to ${LIGHTSAIL_INSTANCE_USER}@${LIGHTSAIL_INSTANCE_IP} failed. Check the IP, user, and SSH key."
-
-info "Copying openclaw/ directory to remote ~/openclaw/ ..."
-# shellcheck disable=SC2086
-scp ${SSH_OPTS} -r \
-    "${OPENCLAW_DIR}/" \
-    "${LIGHTSAIL_INSTANCE_USER}@${LIGHTSAIL_INSTANCE_IP}:~/openclaw/" \
-    || die "scp failed. Check SSH key permissions and available disk space on the instance."
-
-success "openclaw/ copied to ${LIGHTSAIL_INSTANCE_IP}:~/openclaw/"
+success "EKS check complete. CDK handles Docker build, ECR push, and EKS deployment automatically."
 
 # =============================================================================
-# STEP 9 — SSH to Lightsail: write .env and run openclaw config setup
+# STEP 8b — Apply schema additions (new tables for admin, reviews, stock, etc.)
 # =============================================================================
-step "9 of 11 — Configure OpenClaw on Lightsail"
-
-info "Writing environment variables to remote ~/.env and configuring OpenClaw..."
-
-# shellcheck disable=SC2086
-ssh ${SSH_OPTS} \
-    "${LIGHTSAIL_INSTANCE_USER}@${LIGHTSAIL_INSTANCE_IP}" \
-    "bash -s" << REMOTE_SCRIPT
-set -euo pipefail
-
-# Write environment file on the remote instance
-cat > ~/.env << 'ENVEOF'
-# Claw Boutique — OpenClaw instance environment
-# Generated by deploy.sh on $(date -u '+%Y-%m-%dT%H:%M:%SZ')
-
-AWS_REGION=${REGION}
-
-# Database
-DB_HOST=${DB_HOST}
-DB_PORT=${DB_PORT:-3306}
-DB_USER=${DB_USER}
-DB_PASSWORD=${DB_PASSWORD}
-DB_NAME=${DB_NAME}
-
-# WhatsApp (AWS End User Messaging Social)
-WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID}
-WHATSAPP_WABA_ID=${WHATSAPP_WABA_ID:-}
-
-# Seller info
-SELLER_NAME=${SELLER_NAME:-"Store Owner"}
-
-# SES
-SES_FROM_EMAIL=${SES_FROM_EMAIL}
-SES_FROM_NAME=${SES_FROM_NAME:-"Claw Boutique"}
-
-# OpenClaw Gateway
-OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-"$(openssl rand -hex 32 2>/dev/null || echo 'REPLACE_WITH_SECURE_TOKEN')"}
-
-# IAM role for Secrets Manager access
-LIGHTSAIL_ROLE_ARN=${LIGHTSAIL_ROLE_ARN:-}
-ENVEOF
-
-chmod 600 ~/.env
-echo "[remote] .env written (600)"
-
-# Ensure openclaw config directory is in place
-if [ -d ~/openclaw ]; then
-    echo "[remote] openclaw directory found at ~/openclaw"
-    ls ~/openclaw/
-else
-    echo "[remote] ERROR: ~/openclaw directory not found after scp"
-    exit 1
-fi
-
-# Set up the AWS profile for Secrets Manager access if role ARN is set
-if [ -n "${LIGHTSAIL_ROLE_ARN:-}" ]; then
-    mkdir -p ~/.aws
-    if ! grep -q 'clawboutique' ~/.aws/config 2>/dev/null; then
-        cat >> ~/.aws/config << AWSEOF
-
-[profile clawboutique]
-role_arn = ${LIGHTSAIL_ROLE_ARN}
-source_profile = default
-region = ${REGION}
-AWSEOF
-        echo "[remote] AWS profile 'clawboutique' added to ~/.aws/config"
-    else
-        echo "[remote] AWS profile 'clawboutique' already present in ~/.aws/config"
-    fi
-fi
-
-echo "[remote] OpenClaw environment configured"
-REMOTE_SCRIPT
-
-success "OpenClaw environment configured on Lightsail instance"
-
-# =============================================================================
-# STEP 9b — Apply schema additions (new tables for admin, reviews, stock, etc.)
-# =============================================================================
-step "9b of 13 — Apply schema additions"
+step "8b of 9 — Apply schema additions"
 
 if [[ -f "${SCRIPTS_DIR}/schema_additions.sql" ]]; then
     info "Applying schema additions (admin_actions, interaction_memory, reviews, abandoned_carts)..."
@@ -533,74 +444,9 @@ else
 fi
 
 # =============================================================================
-# STEP 10 — Copy web server and install dependencies on Lightsail
+# STEP 9 — Validate WABA is linked to SNS topic
 # =============================================================================
-step "10 of 13 — Deploy web server to Lightsail"
-
-WEB_DIR="${REPO_ROOT}/web"
-
-info "Copying web/ directory to remote ~/web/ ..."
-# shellcheck disable=SC2086
-scp ${SSH_OPTS} -r \
-    "${WEB_DIR}/" \
-    "${LIGHTSAIL_INSTANCE_USER}@${LIGHTSAIL_INSTANCE_IP}:~/web/" \
-    || die "Failed to copy web/ to Lightsail"
-
-info "Installing Python dependencies and setting up web server..."
-# shellcheck disable=SC2086
-ssh ${SSH_OPTS} \
-    "${LIGHTSAIL_INSTANCE_USER}@${LIGHTSAIL_INSTANCE_IP}" \
-    "bash -s" << 'WEB_SETUP'
-set -euo pipefail
-
-# Install pip if missing
-if ! command -v pip3 &>/dev/null; then
-    sudo apt-get update -qq && sudo apt-get install -y -qq python3-pip 2>/dev/null \
-    || sudo yum install -y python3-pip 2>/dev/null \
-    || echo "[remote] pip3 may already be installed"
-fi
-
-# Install web server dependencies
-cd ~/web
-pip3 install -r requirements.txt --quiet 2>/dev/null || pip3 install -r requirements.txt
-
-# Create a systemd service for the web server
-sudo tee /etc/systemd/system/claw-boutique-web.service > /dev/null << 'SVCEOF'
-[Unit]
-Description=Claw Boutique Web Server
-After=network.target
-
-[Service]
-Type=simple
-User=$USER
-WorkingDirectory=/home/$USER/web
-EnvironmentFile=/home/$USER/.env
-ExecStart=/usr/bin/python3 /home/$USER/web/server.py
-Restart=always
-RestartSec=5
-Environment=PORT=8080
-
-[Install]
-WantedBy=multi-user.target
-SVCEOF
-
-# Fix the User field in the service file
-sudo sed -i "s/User=\$USER/User=$(whoami)/" /etc/systemd/system/claw-boutique-web.service
-sudo sed -i "s|/home/\$USER|/home/$(whoami)|g" /etc/systemd/system/claw-boutique-web.service
-
-sudo systemctl daemon-reload
-sudo systemctl enable claw-boutique-web
-sudo systemctl restart claw-boutique-web
-
-echo "[remote] Web server installed and started on port 8080"
-WEB_SETUP
-
-success "Web server deployed and running on port 8080"
-
-# =============================================================================
-# STEP 11 — Validate WABA is linked to SNS topic
-# =============================================================================
-step "11 of 13 — Validate End User Messaging Social WABA linked to SNS"
+step "9 of 9 — Validate End User Messaging Social WABA linked to SNS"
 
 if [[ -n "${SNS_TOPIC_ARN}" ]]; then
     info "Checking SNS topic exists and has EUM Social publish permission..."
@@ -665,41 +511,9 @@ else
 fi
 
 # =============================================================================
-# STEP 12 — Open Lightsail firewall ports
+# Deployment summary
 # =============================================================================
-step "12 of 13 — Configure Lightsail firewall"
-
-# Get the instance name
-INSTANCE_NAME=$(aws lightsail get-instances \
-    --region "${REGION}" \
-    --query "instances[?publicIpAddress=='${LIGHTSAIL_INSTANCE_IP}'].name" \
-    --output text 2>/dev/null || echo "")
-
-if [[ -n "${INSTANCE_NAME}" ]]; then
-    info "Opening ports 8080 (web) and 8443 (OpenClaw) on Lightsail firewall..."
-
-    aws lightsail open-instance-public-ports \
-        --region "${REGION}" \
-        --instance-name "${INSTANCE_NAME}" \
-        --port-info fromPort=8080,toPort=8080,protocol=tcp 2>/dev/null \
-        || warn "Port 8080 may already be open"
-
-    aws lightsail open-instance-public-ports \
-        --region "${REGION}" \
-        --instance-name "${INSTANCE_NAME}" \
-        --port-info fromPort=8443,toPort=8443,protocol=tcp 2>/dev/null \
-        || warn "Port 8443 may already be open"
-
-    success "Lightsail firewall configured"
-else
-    warn "Could not find Lightsail instance by IP — configure firewall manually"
-    warn "Open ports: 8080 (web server), 8443 (OpenClaw gateway), 22 (SSH)"
-fi
-
-# =============================================================================
-# STEP 13 — Print deployment summary
-# =============================================================================
-step "13 of 13 — Deployment summary"
+step "Deployment summary"
 
 END_TIME=$(date +%s)
 ELAPSED=$(( END_TIME - START_TIME ))
@@ -725,32 +539,25 @@ echo "  Database           : ${DB_NAME}"
 echo "  Schema             : applied (6 tables)"
 echo "  Catalog            : seeded (20 products)"
 echo ""
-echo -e "${BOLD}OpenClaw (Lightsail)${RESET}"
-echo "  Instance IP        : ${LIGHTSAIL_INSTANCE_IP}"
-echo "  SSH User           : ${LIGHTSAIL_INSTANCE_USER}"
-echo "  Config             : ~/openclaw/openclaw.json"
-echo "  Environment        : ~/.env"
-echo "  Gateway port       : 8443 (TLS)"
-echo ""
-echo -e "${BOLD}Web Server${RESET}"
-echo "  Buyer Storefront   : http://${LIGHTSAIL_INSTANCE_IP}:8080"
-echo "  Admin Dashboard    : http://${LIGHTSAIL_INSTANCE_IP}:8080/admin.html"
-echo "  API Base URL       : http://${LIGHTSAIL_INSTANCE_IP}:8080/api"
+echo -e "${BOLD}OpenClaw (EKS)${RESET}"
+echo "  EKS Cluster        : ${EKS_CLUSTER_NAME}"
+echo "  Check pods         : kubectl get pods -n default -l app=openclaw"
+echo "  View logs          : kubectl logs -n default -l app=openclaw --tail=50"
+echo "  Config (in image)  : /app/openclaw/openclaw.json"
 echo ""
 echo -e "${BOLD}Endpoints${RESET}"
-echo "  OpenClaw Gateway   : https://${LIGHTSAIL_INSTANCE_IP}:8443"
+echo "  OpenClaw Gateway   : via EKS NLB (check CDK outputs or kubectl get svc)"
 echo "  WhatsApp inbound   : via SNS -> Lambda -> OpenClaw"
 echo "  SES outbound       : ${SES_FROM_EMAIL:-<SES_FROM_EMAIL>}"
 echo ""
 echo -e "${BOLD}Next steps${RESET}"
-echo "  1. Link WABA phone number to SNS topic (see Step 10 output above)"
-echo "  2. Start OpenClaw on the Lightsail instance:"
-echo "     ssh ${LIGHTSAIL_INSTANCE_USER}@${LIGHTSAIL_INSTANCE_IP}"
-echo "     cd ~/openclaw && source ~/.env && ./start.sh"
+echo "  1. Link WABA phone number to SNS topic (see Step 9 output above)"
+echo "  2. OpenClaw is deployed automatically by CDK to EKS. Verify it is running:"
+echo "     kubectl get pods -n default -l app=openclaw"
 echo "  3. Set Lambda environment variables (OPENCLAW_GATEWAY_URL, OPENCLAW_GATEWAY_TOKEN):"
 echo "     aws lambda update-function-configuration \\"
 echo "       --function-name ${DISPATCHER_FN:-ClawBoutiqueDispatcher} \\"
-echo "       --environment 'Variables={OPENCLAW_GATEWAY_URL=https://${LIGHTSAIL_INSTANCE_IP}:8443,OPENCLAW_GATEWAY_TOKEN=<token>}' \\"
+echo "       --environment 'Variables={OPENCLAW_GATEWAY_URL=<nlb-endpoint>,OPENCLAW_GATEWAY_TOKEN=<token>}' \\"
 echo "       --region ${REGION}"
 echo "  4. Activate the SES receipt rule set:"
 echo "     aws ses set-active-receipt-rule-set --rule-set-name ClawBoutiqueRuleSet --region ${REGION}"

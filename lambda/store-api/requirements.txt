@@ -1,4 +1,4 @@
 flask
 flask-cors
-mangum
+aws-wsgi
 pymysql
