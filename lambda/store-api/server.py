@@ -31,7 +31,7 @@ logger.setLevel(logging.INFO)
 
 app = Flask(__name__)
 CORS(app, origins=[
-    "https://d22y1hcx8ni0pf.cloudfront.net",
+    "https://d1yis8p165yfn1.cloudfront.net",
     "http://localhost:*",
 ])
 
@@ -134,7 +134,7 @@ def _send_order_confirmation_email(
 
     from_name = os.environ.get("SES_FROM_NAME", "Claw Boutique").strip()
     sender = f"{from_name} <{from_addr}>" if from_name else from_addr
-    shop_url = os.environ.get("SHOP_URL", "https://d22y1hcx8ni0pf.cloudfront.net")
+    shop_url = os.environ.get("SHOP_URL", "https://d1yis8p165yfn1.cloudfront.net")
 
     safe_name = html.escape(customer_name)
     safe_items = html.escape(items_summary)
@@ -266,34 +266,94 @@ def _send_order_shipped_email(
         logger.exception("SES order shipped email failed (non-fatal)")
 
 
-def _notify_seller(text: str):
-    """Send a notification to the seller via the OpenClaw agent-bridge (Telegram).
+def _send_refund_email(customer_email: str, customer_name: str, order_id: int):
+    """Send a refund confirmation email to the customer via SES.
 
-    Posts to the agent-bridge on Lightsail, which uses OpenClaw's Telegram
-    channel to deliver the message to the seller's Telegram chat.
-    The seller can then reply via Telegram and OpenClaw processes commands.
+    Silently skips if SES_FROM_EMAIL is not configured.
     """
-    bridge_url = os.environ.get("OPENCLAW_BRIDGE_URL", "")
-    bridge_token = os.environ.get("OPENCLAW_BRIDGE_TOKEN", "")
-    if not bridge_url:
-        logger.warning("OPENCLAW_BRIDGE_URL not set, skipping seller notification")
+    from_addr = os.environ.get("SES_FROM_EMAIL", "").strip()
+    if not from_addr:
+        logger.warning("SES_FROM_EMAIL not set, skipping refund email")
+        return
+
+    from_name = os.environ.get("SES_FROM_NAME", "Claw Boutique").strip()
+    sender = f"{from_name} <{from_addr}>" if from_name else from_addr
+    shop_url = os.environ.get("SHOP_URL", "https://d1yis8p165yfn1.cloudfront.net")
+
+    safe_name = html.escape(customer_name)
+
+    subject = f"Claw Boutique - Refund processed for order #{order_id}"
+    html_body = f"""\
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Refund Confirmation</title></head>
+<body style="font-family:sans-serif;color:#333;max-width:600px;margin:auto;padding:20px">
+  <h2 style="color:#c0392b">Claw Boutique</h2>
+  <p>Hi {safe_name},</p>
+  <p>We sincerely apologize for your recent experience with order #{order_id}.</p>
+  <p>A <strong>full refund</strong> has been processed. Please allow 3-5 business days for it to appear on your statement.</p>
+  <p>We value your feedback and are working to improve. If there is anything else we can help with, please don't hesitate to reach out.</p>
+  <p style="margin-top:20px">
+    <a href="{shop_url}" style="color:#c0392b">Visit Claw Boutique</a>
+  </p>
+  <p style="color:#888;font-size:12px">Claw Boutique</p>
+</body>
+</html>"""
+    text_body = (
+        f"Hi {customer_name},\n\n"
+        f"We sincerely apologize for your recent experience with order #{order_id}.\n\n"
+        f"A full refund has been processed. Please allow 3-5 business days "
+        f"for it to appear on your statement.\n\n"
+        f"We value your feedback and are working to improve.\n\n"
+        f"Claw Boutique\n{shop_url}"
+    )
+
+    try:
+        ses = boto3.client("ses", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+        ses.send_email(
+            Source=sender,
+            Destination={"ToAddresses": [customer_email]},
+            Message={
+                "Subject": {"Data": subject, "Charset": "UTF-8"},
+                "Body": {
+                    "Text": {"Data": text_body, "Charset": "UTF-8"},
+                    "Html": {"Data": html_body, "Charset": "UTF-8"},
+                },
+            },
+        )
+        logger.info("Refund email sent to %s for order #%d", customer_email, order_id)
+    except Exception:
+        logger.exception("SES refund email failed (non-fatal)")
+
+
+def _notify_seller(text: str, reply_markup: dict | None = None):
+    """Send a notification to the seller via the Telegram Bot API.
+
+    Uses the Telegram Bot API directly to deliver the message to the
+    seller's Telegram chat. The seller can then reply via Telegram
+    and OpenClaw processes commands.
+    """
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    seller_id = os.environ.get("TELEGRAM_SELLER_ID", "")
+    if not bot_token or not seller_id:
+        logger.warning("TELEGRAM_BOT_TOKEN or TELEGRAM_SELLER_ID not set, skipping seller notification")
         return
 
     try:
         import urllib.request
+        payload = {"chat_id": seller_id, "text": text}
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
         req = urllib.request.Request(
-            f"{bridge_url}/notify",
-            data=json.dumps({"message": text}).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {bridge_token}",
-            },
+            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            logger.info("Seller notification sent via OpenClaw bridge (Telegram): %s", resp.status)
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            logger.info("Seller notification sent via Telegram Bot API: %s", resp.status)
     except Exception:
-        logger.exception("OpenClaw bridge notify failed")
+        logger.exception("Telegram seller notify failed")
 
 
 def _send_whatsapp(phone: str, text: str):
@@ -390,11 +450,11 @@ def _check_stock_and_alert(product_ids: list[int]):
         if not lines:
             return  # stock is healthy, no alert needed
 
+        product_names = [r["name"] for r in rows if int(r["stock_qty"]) <= 5]
         msg = (
             "[Claw Boutique - Stock Alert]\n\n"
             + "\n".join(lines)
-            + "\n\nReply 'restock <product>' to reorder, "
-            "or ask me anything about inventory."
+            + "\n\nReply 'restock <product>' to restock."
         )
         _notify_seller(msg)
     except Exception:
@@ -662,12 +722,19 @@ def create_order():
         logger.exception("create_order error")
         return _err("Internal server error.", 500)
 
-    # Check stock levels and alert admin if low
-    _check_stock_and_alert(product_ids)
+    # Return the order response immediately, then run async tasks
+    response = jsonify({"order_id": order_id, "total": round(total, 2)})
+    response.status_code = 201
+
+    # Run post-order tasks with individual error handling so one failure
+    # doesn't block the rest
+    try:
+        _check_stock_and_alert(product_ids)
+    except Exception:
+        logger.exception("Stock alert failed (non-fatal)")
 
     # Demo mode: reset purchased products back to 5 so every order triggers
-    # a low-stock alert.  Runs after the alert so the email shows the real
-    # (low) count at the moment of purchase.
+    # a low-stock alert.
     try:
         with get_db() as conn:
             with _cursor(conn) as cur:
@@ -680,27 +747,46 @@ def create_order():
     except Exception:
         logger.exception("Demo stock reset failed (non-fatal)")
 
-    # Send order confirmation email to the customer
-    if customer_email:
-        items_summary = ", ".join(
-            f"{product_rows[pid]['name']} x{qty}"
-            for pid, qty in qty_map.items()
-            if pid in product_rows
-        )
-        _send_order_confirmation_email(
-            customer_email=customer_email,
-            customer_name=customer_name,
-            order_id=order_id,
-            items_summary=items_summary,
-            total=total,
-        )
+    try:
+        if customer_email:
+            items_summary = ", ".join(
+                f"{product_rows[pid]['name']} x{qty}"
+                for pid, qty in qty_map.items()
+                if pid in product_rows
+            )
+            _send_order_confirmation_email(
+                customer_email=customer_email,
+                customer_name=customer_name,
+                order_id=order_id,
+                items_summary=items_summary,
+                total=total,
+            )
+    except Exception:
+        logger.exception("Order confirmation email failed (non-fatal)")
 
-    # Fire-and-forget: send WhatsApp survey to customer
-    if customer_phone:
-        item_names = [product_rows[pid]["name"] for pid in list(qty_map.keys())[:3] if pid in product_rows and "name" in product_rows[pid]]
-        _send_order_survey(customer_phone, customer_name, order_id, item_names)
+    try:
+        if customer_phone:
+            items_list = ", ".join(
+                product_rows[pid]["name"]
+                for pid in list(qty_map.keys())[:3]
+                if pid in product_rows and "name" in product_rows[pid]
+            )
+            _send_whatsapp(
+                customer_phone,
+                f"Hi {customer_name}! Your Claw Boutique order #{order_id} is confirmed.\n"
+                f"Items: {items_list}\n"
+                f"Total: PHP {total:.2f}\n\n"
+                f"How would you rate your experience? Reply with a number:\n"
+                f"  1 = Very poor\n"
+                f"  2 = Poor\n"
+                f"  3 = Okay\n"
+                f"  4 = Good\n"
+                f"  5 = Excellent"
+            )
+    except Exception:
+        logger.exception("WhatsApp confirmation failed (non-fatal)")
 
-    return jsonify({"order_id": order_id, "total": round(total, 2)}), 201
+    return response
 
 
 @app.route("/api/orders", methods=["GET"])
@@ -1138,7 +1224,8 @@ def resolve_escalation(escalation_id: int):
 
 @app.route("/api/escalations/<int:escalation_id>/send-apology", methods=["POST"])
 def send_apology_whatsapp(escalation_id: int):
-    """Send a WhatsApp apology + refund message and resolve the escalation."""
+    """Send a WhatsApp apology + refund message, send refund email, mark order
+    as refunded, and resolve the escalation."""
     body = request.get_json(silent=True) or {}
     phone = (body.get("phone") or "").strip()
 
@@ -1158,6 +1245,25 @@ def send_apology_whatsapp(escalation_id: int):
                 if not dest_phone:
                     return _err("No customer phone available for this escalation.")
 
+                # Look up customer details and most recent order for refund email
+                customer_email = None
+                customer_name = None
+                order_id = None
+                cur.execute(
+                    """SELECT c.email, c.name, o.id AS order_id
+                       FROM customers c
+                       JOIN orders o ON o.customer_id = c.id
+                       WHERE c.phone = %s
+                       ORDER BY o.created_at DESC LIMIT 1""",
+                    (dest_phone,),
+                )
+                cust_row = cur.fetchone()
+                if cust_row:
+                    customer_email = cust_row.get("email")
+                    customer_name = cust_row.get("name", "Customer")
+                    order_id = cust_row.get("order_id")
+
+                # Send WhatsApp apology
                 message = (
                     "Hi, this is Claw Boutique. We sincerely apologize for your recent experience. "
                     "We've processed a full refund for your order. "
@@ -1166,22 +1272,39 @@ def send_apology_whatsapp(escalation_id: int):
                 )
                 _send_whatsapp(dest_phone, message)
 
+                # Mark the order as refunded
+                if order_id:
+                    cur.execute(
+                        "UPDATE orders SET status = 'refunded' WHERE id = %s AND status NOT IN ('refunded','cancelled')",
+                        (order_id,),
+                    )
+
                 # Resolve the escalation
                 cur.execute(
                     """INSERT INTO admin_actions
                         (escalation_id, action_type, resolution, created_at)
                     VALUES (%s, %s, %s, %s)""",
-                    (escalation_id, "apology_refund", "Sent apology & refund via WhatsApp", datetime.utcnow()),
+                    (escalation_id, "apology_refund", "Sent apology & refund via WhatsApp + email", datetime.utcnow()),
                 )
                 action_id = cur.lastrowid
+                conn.commit()
     except Exception as exc:
         logger.exception("send_apology_whatsapp error")
         return _err("Internal server error.", 500)
+
+    # Send refund email outside the DB transaction (fire-and-forget)
+    if customer_email and order_id:
+        try:
+            _send_refund_email(customer_email, customer_name or "Customer", order_id)
+        except Exception:
+            logger.exception("Refund email failed (non-fatal)")
 
     return jsonify({
         "escalation_id": escalation_id,
         "action_id": action_id,
         "phone": dest_phone,
+        "order_id": order_id,
+        "email_sent": bool(customer_email),
         "message_sent": True,
     }), 200
 

@@ -1,189 +1,151 @@
 <mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/26.0.16 Chrome/132.0.6834.196 Electron/34.2.0 Safari/537.36" version="26.0.16">
   <diagram id="arch" name="Claw Boutique Architecture">
-    <mxGraphModel dx="1912" dy="1139" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1000" math="0" shadow="0">
+    <mxGraphModel dx="2607" dy="1553" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1200" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="g-web" value="Web Storefront" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#147EBA;fillColor=#E6F2F8;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
-          <mxGeometry x="20" y="30" width="280" height="170" as="geometry" />
+        <mxCell id="aws-cloud" value="AWS Cloud" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud_alt;strokeColor=#232F3E;fillColor=#F5F5F5;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
+          <mxGeometry x="280" y="40" width="1320" height="1080" as="geometry" />
         </mxCell>
-        <mxCell id="cf" value="CloudFront" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#8C4FFF;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudfront;" parent="1" vertex="1">
-          <mxGeometry x="50" y="85" width="60" height="60" as="geometry" />
+        <mxCell id="customer-wa" value="Customer&lt;br&gt;(WhatsApp)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#232F3E;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.mobile_client;" parent="1" vertex="1">
+          <mxGeometry x="60" y="160" width="60" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="s3" value="S3&lt;br&gt;(Static Site)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#3F8624;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;" parent="1" vertex="1">
-          <mxGeometry x="200" y="85" width="60" height="60" as="geometry" />
+        <mxCell id="customer-web" value="Customer&lt;br&gt;(Browser + Email)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#232F3E;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.users;" parent="1" vertex="1">
+          <mxGeometry x="60" y="530" width="60" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="g-store" value="Store Backend" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#9C27B0;fillColor=#F3E5F5;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
-          <mxGeometry x="380" y="20" width="530" height="270" as="geometry" />
+        <mxCell id="seller-tg" value="Store Owner&lt;br&gt;(Telegram)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#0088CC;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.general;" parent="1" vertex="1">
+          <mxGeometry x="60" y="870" width="60" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="apigw" value="API Gateway" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#E7157B;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;" parent="1" vertex="1">
-          <mxGeometry x="420" y="100" width="60" height="60" as="geometry" />
+        <mxCell id="g-wa" value="WhatsApp Channel" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#147EBA;fillColor=#E6F2F8;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
+          <mxGeometry x="310" y="80" width="360" height="220" as="geometry" />
         </mxCell>
-        <mxCell id="store-lambda" value="Store API&lt;br&gt;Lambda" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#ED7100;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;" parent="1" vertex="1">
-          <mxGeometry x="570" y="100" width="60" height="60" as="geometry" />
+        <mxCell id="eums" value="End User Messaging&lt;br&gt;Social (WABA)&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;Inbound + Outbound&lt;/font&gt;" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#DD344C;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.pinpoint;" parent="1" vertex="1">
+          <mxGeometry x="350" y="140" width="60" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="secrets" value="Secrets&lt;br&gt;Manager" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#DD344C;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.secrets_manager;" parent="1" vertex="1">
-          <mxGeometry x="760" y="55" width="60" height="60" as="geometry" />
+        <mxCell id="sns" value="SNS Topic&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;(Inbound Events)&lt;/font&gt;" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#E7157B;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.sns;" parent="1" vertex="1">
+          <mxGeometry x="560" y="140" width="60" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="db" value="MySQL&lt;br&gt;(RDS)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#C925D1;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.rds;" parent="1" vertex="1">
-          <mxGeometry x="760" y="190" width="60" height="60" as="geometry" />
+        <mxCell id="g-web" value="Web Hosting" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#147EBA;fillColor=#E6F2F8;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
+          <mxGeometry x="310" y="440" width="360" height="220" as="geometry" />
         </mxCell>
-        <mxCell id="g-seller" value="Seller Channel (OpenClaw + Telegram)" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#0088CC;fillColor=#E3F2FD;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
-          <mxGeometry x="20" y="330" width="340" height="320" as="geometry" />
+        <mxCell id="cf" value="CloudFront&lt;br&gt;CDN" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#8C4FFF;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudfront;" parent="1" vertex="1">
+          <mxGeometry x="350" y="500" width="60" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="bedrock-claude" value="Claude Sonnet&lt;br&gt;(Bedrock)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#01A88D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;" parent="1" vertex="1">
-          <mxGeometry x="240" y="400" width="60" height="60" as="geometry" />
+        <mxCell id="s3" value="S3 Static Site&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;(Storefront + Admin)&lt;/font&gt;" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#3F8624;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;" parent="1" vertex="1">
+          <mxGeometry x="560" y="500" width="60" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="telegram-bot" value="Telegram Bot" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0088CC;fontColor=#FFFFFF;strokeColor=#006699;fontSize=11;fontStyle=1;arcSize=40;" parent="1" vertex="1">
-          <mxGeometry x="45" y="555" width="90" height="36" as="geometry" />
+        <mxCell id="g-eks" value="AI - Seller Agent (EKS)" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#7AA116;fillColor=#F2F6E8;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
+          <mxGeometry x="310" y="800" width="360" height="220" as="geometry" />
         </mxCell>
-        <mxCell id="bridge" value="Agent Bridge" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ED7100;fontColor=#FFFFFF;strokeColor=#C85F00;fontSize=11;fontStyle=1;arcSize=40;" parent="1" vertex="1">
-          <mxGeometry x="220" y="555" width="100" height="36" as="geometry" />
+        <mxCell id="nlb" value="Network&lt;br&gt;Load Balancer" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#8C4FFF;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.elb;" parent="1" vertex="1">
+          <mxGeometry x="350" y="860" width="60" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="g-msg" value="Messaging &amp; Email" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#7AA116;fillColor=#E8F5E9;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
-          <mxGeometry x="460" y="450" width="170" height="200" as="geometry" />
+        <mxCell id="openclaw" value="OpenClaw Gateway&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;(Claude on Bedrock)&lt;/font&gt;" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#ED7100;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.eks;" parent="1" vertex="1">
+          <mxGeometry x="560" y="860" width="60" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="eums" value="End User&lt;br&gt;Messaging&lt;br&gt;Social (EUMS)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#DD344C;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.pinpoint;" parent="1" vertex="1">
-          <mxGeometry x="510" y="500" width="60" height="60" as="geometry" />
+        <mxCell id="g-compute" value="Serverless Compute" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#D86613;fillColor=#FFF4E8;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
+          <mxGeometry x="780" y="280" width="520" height="400" as="geometry" />
         </mxCell>
-        <mxCell id="g-evt" value="Event Processing" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#E07D24;fillColor=#FFF3E0;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
-          <mxGeometry x="930" y="330" width="200" height="270" as="geometry" />
+        <mxCell id="dispatcher" value="Dispatcher Lambda&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;(Message Router)&lt;/font&gt;" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#ED7100;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;" parent="1" vertex="1">
+          <mxGeometry x="820" y="340" width="60" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="sns" value="SNS" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#E7157B;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.sns;" parent="1" vertex="1">
-          <mxGeometry x="1000" y="380" width="60" height="60" as="geometry" />
+        <mxCell id="bedrock" value="Bedrock Agent&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;(Amazon Nova Lite)&lt;/font&gt;" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#01A88D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.sagemaker;" parent="1" vertex="1">
+          <mxGeometry x="1000" y="340" width="60" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="dispatcher" value="Dispatcher&lt;br&gt;Lambda" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#ED7100;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;" parent="1" vertex="1">
-          <mxGeometry x="1000" y="500" width="60" height="60" as="geometry" />
+        <mxCell id="apigw" value="API Gateway&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;REST Endpoint&lt;/font&gt;" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#E7157B;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;" parent="1" vertex="1">
+          <mxGeometry x="820" y="530" width="60" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="g-ai" value="Customer AI Channel" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#01A88D;fillColor=#E0F7F1;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
-          <mxGeometry x="1210" y="330" width="190" height="230" as="geometry" />
+        <mxCell id="store-api" value="Store API Lambda&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;(Flask REST API)&lt;/font&gt;" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#ED7100;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;" parent="1" vertex="1">
+          <mxGeometry x="1170" y="440" width="60" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="bedrock-agent" value="Bedrock Agent&lt;br&gt;(Nova Lite)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#01A88D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;" parent="1" vertex="1">
-          <mxGeometry x="1280" y="400" width="60" height="60" as="geometry" />
+        <mxCell id="g-data" value="Data Layer" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#147EBA;fillColor=#E6F2F8;verticalAlign=top;align=left;spacingLeft=30;dashed=0;" parent="1" vertex="1">
+          <mxGeometry x="780" y="800" width="520" height="220" as="geometry" />
         </mxCell>
-        <mxCell id="customer" value="Customer" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=none;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.users;" parent="1" vertex="1">
-          <mxGeometry x="510" y="780" width="60" height="60" as="geometry" />
+        <mxCell id="rds" value="RDS MySQL&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;(Orders, Products,&lt;br&gt;Reviews, Escalations)&lt;/font&gt;" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#C925D1;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.rds;" parent="1" vertex="1">
+          <mxGeometry x="870" y="860" width="60" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="wa-badge" value="WhatsApp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#25D366;fontColor=#FFFFFF;strokeColor=#128C7E;fontSize=10;fontStyle=1;arcSize=50;" parent="1" vertex="1">
-          <mxGeometry x="590" y="798" width="80" height="28" as="geometry" />
+        <mxCell id="secrets" value="Secrets Manager&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;(DB Credentials)&lt;/font&gt;" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#DD344C;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.secrets_manager;" parent="1" vertex="1">
+          <mxGeometry x="1100" y="860" width="60" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="owner" value="Store Owner" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=none;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.users;" parent="1" vertex="1">
-          <mxGeometry x="60" y="760" width="60" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="tg-badge" value="Telegram" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0088CC;fontColor=#FFFFFF;strokeColor=#006699;fontSize=10;fontStyle=1;arcSize=50;" parent="1" vertex="1">
-          <mxGeometry x="140" y="778" width="76" height="28" as="geometry" />
-        </mxCell>
-        <mxCell id="e-cf-s3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;" parent="1" source="cf" target="s3" edge="1">
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;" parent="1" source="customer-wa" target="eums" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-cf-apigw" value="API" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=10;" parent="1" source="cf" target="apigw" edge="1">
-          <mxGeometry relative="1" as="geometry">
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;" parent="1" source="eums" target="sns" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;" parent="1" source="sns" target="dispatcher" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="real-time chat" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" parent="1" source="dispatcher" target="bedrock" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="action groups" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" parent="1" source="bedrock" target="store-api" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;" parent="1" source="customer-web" target="cf" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;" parent="1" source="cf" target="s3" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="checkout" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" parent="1" source="customer-web" target="apigw" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;" parent="1" source="apigw" target="store-api" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;rounded=1;" parent="1" source="seller-tg" target="nlb" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;" parent="1" source="nlb" target="openclaw" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" value="tool calls" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" parent="1" source="openclaw" target="store-api" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" value="async log" style="edgeStyle=orthogonalEdgeStyle;rounded=1;dashed=1;fontSize=9;" parent="1" source="dispatcher" target="nlb" edge="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="380" y="350" />
+            </Array>
             <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="e-apigw-lambda" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;" parent="1" source="apigw" target="store-lambda" edge="1">
+        <mxCell id="e14" style="edgeStyle=orthogonalEdgeStyle;rounded=1;" parent="1" source="store-api" target="rds" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-lambda-db" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;" parent="1" source="store-lambda" target="db" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="790" y="150" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e-lambda-secrets" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;" parent="1" source="store-lambda" target="secrets" edge="1">
+        <mxCell id="e15" style="edgeStyle=orthogonalEdgeStyle;rounded=1;dashed=1;endArrow=none;" parent="1" source="rds" target="secrets" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-cust-eums" value="WhatsApp&lt;br&gt;messages" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=10;strokeColor=#25D366;fontColor=#25D366;startArrow=classic;startFill=1;" parent="1" source="customer" target="eums" edge="1">
-          <mxGeometry x="-0.3636" relative="1" as="geometry">
-            <mxPoint y="1" as="offset" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e-eums-sns" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;" parent="1" source="eums" target="sns" edge="1">
-          <mxGeometry relative="1" as="geometry">
+        <mxCell id="e17" value="order confirm + refund emails" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" parent="1" target="customer-web" edge="1">
+          <mxGeometry x="-0.0069" y="10" relative="1" as="geometry">
+            <mxPoint x="1420" y="469.9999999999998" as="sourcePoint" />
             <Array as="points">
-              <mxPoint x="540" y="480" />
-              <mxPoint x="890" y="480" />
-              <mxPoint x="890" y="410" />
+              <mxPoint x="1420" y="740" />
+              <mxPoint x="90" y="740" />
             </Array>
+            <mxPoint x="-1" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="e-sns-dispatch" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;" parent="1" source="sns" target="dispatcher" edge="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e-dispatch-agent" value="customer&lt;br&gt;messages" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=10;" parent="1" source="dispatcher" target="bedrock-agent" edge="1">
-          <mxGeometry relative="1" as="geometry">
+        <mxCell id="e18" value="WhatsApp replies" style="edgeStyle=orthogonalEdgeStyle;rounded=1;dashed=1;fontSize=9;" parent="1" source="store-api" target="eums" edge="1">
+          <mxGeometry x="0.0015" relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="1030" y="560" />
-              <mxPoint x="1170" y="560" />
-              <mxPoint x="1170" y="430" />
+              <mxPoint x="1200" y="420" />
+              <mxPoint x="380" y="420" />
             </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e-agent-eums" value="reply via&lt;br&gt;EUMS" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#4a86c8;strokeWidth=1.5;fontSize=10;fontColor=#4a86c8;" parent="1" source="bedrock-agent" target="eums" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="1310" y="670" />
-              <mxPoint x="720" y="670" />
-              <mxPoint x="720" y="530" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e-agent-api" value="tool calls" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=10;" parent="1" source="bedrock-agent" target="apigw" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="1430" y="430" />
-              <mxPoint x="1430" y="310" />
-              <mxPoint x="450" y="310" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e-lambda-eums" value="post-purchase&lt;br&gt;surveys" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#25D366;strokeWidth=1.5;fontSize=10;fontColor=#25D366;" parent="1" source="store-lambda" target="eums" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="600" y="250" />
-              <mxPoint x="660" y="250" />
-              <mxPoint x="660" y="530" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e-owner-tg" value="Telegram DM" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=10;strokeColor=#0088CC;fontColor=#0088CC;startArrow=classic;startFill=1;" parent="1" source="owner" target="telegram-bot" edge="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e-tg-oc" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#0088CC;" parent="1" source="telegram-bot" target="openclaw" edge="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e-oc-claude" value="reasoning +&lt;br&gt;tool use" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=10;" parent="1" source="openclaw" target="bedrock-claude" edge="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e-oc-api" value="tools (HTTP)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=10;strokeColor=#0088CC;fontColor=#0088CC;" parent="1" source="openclaw" target="apigw" edge="1">
-          <mxGeometry x="-0.2335" y="-10" relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="90" y="370" />
-              <mxPoint x="390" y="370" />
-              <mxPoint x="390" y="130" />
-            </Array>
-            <mxPoint x="1" as="offset" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e-lambda-bridge" value="stock alerts,&lt;br&gt;review alerts" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=10;strokeColor=#FF6D00;fontColor=#FF6D00;" parent="1" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="590" y="210" />
-              <mxPoint x="370" y="210" />
-              <mxPoint x="370" y="573" />
-            </Array>
-            <mxPoint x="590" y="160" as="sourcePoint" />
-            <mxPoint x="310" y="572.9999999999998" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e-bridge-tg" value="openclaw message send&lt;br&gt;--channel telegram" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#FF6D00;fontColor=#FF6D00;" parent="1" source="bridge" target="telegram-bot" edge="1">
-          <mxGeometry x="-0.0588" y="-33" relative="1" as="geometry">
             <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="openclaw" value="OpenClaw&lt;br&gt;(Lightsail)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#ED7100;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lightsail;" parent="1" vertex="1">
-          <mxGeometry x="60" y="400" width="60" height="60" as="geometry" />
+        <mxCell id="e19" value="z" style="edgeStyle=orthogonalEdgeStyle;rounded=1;dashed=1;fontSize=9;" parent="1" source="store-api" target="seller-tg" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1200" y="740" />
+              <mxPoint x="90" y="740" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dAYOBiyX-MJMxzLb1Wjx-1" value="SES (Email)" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#DD344C;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.simple_email_service;" vertex="1" parent="1">
+          <mxGeometry x="1420" y="431" width="78" height="78" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

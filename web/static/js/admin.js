@@ -400,17 +400,11 @@ function render_orders_table() {
 
 function order_action_buttons(o) {
   const btns = [];
-  if (o.status === 'pending') {
-    btns.push(`<button onclick="event.stopPropagation(); AdminApp.update_order_status(${o.id}, 'confirmed')" class="px-2.5 py-1 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors">Confirm</button>`);
-  }
   if (o.status === 'confirmed' || o.status === 'processing') {
     btns.push(`<button onclick="event.stopPropagation(); AdminApp.open_ship_modal(${o.id})" class="px-2.5 py-1 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors">Ship</button>`);
   }
   if (o.status === 'shipped') {
     btns.push(`<button onclick="event.stopPropagation(); AdminApp.update_order_status(${o.id}, 'delivered')" class="px-2.5 py-1 text-xs font-medium bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors">Delivered</button>`);
-  }
-  if (!['delivered','cancelled','refunded'].includes(o.status)) {
-    btns.push(`<button onclick="event.stopPropagation(); AdminApp.cancel_order(${o.id})" class="px-2.5 py-1 text-xs font-medium bg-slate-100 hover:bg-red-100 text-slate-600 hover:text-red-700 rounded-md transition-colors">Cancel</button>`);
   }
   return btns.join('');
 }
@@ -511,11 +505,6 @@ async function update_order_status(order_id, new_status, tracking_url) {
   } catch (e) {
     show_toast('Failed to update order: ' + e.message, 'error');
   }
-}
-
-async function cancel_order(order_id) {
-  if (!confirm('Cancel this order?')) return;
-  await update_order_status(order_id, 'cancelled');
 }
 
 // Ship modal
@@ -1109,7 +1098,6 @@ window.AdminApp = {
   navigate,
   open_order_detail,
   update_order_status,
-  cancel_order,
   open_ship_modal,
   quick_resolve,
   send_apology,

@@ -25,7 +25,7 @@ from _api import api_post
 def main():
     parser = argparse.ArgumentParser(description="Restock a product")
     parser.add_argument("--product_name", required=True, help="Product name or partial match")
-    parser.add_argument("--qty", type=int, default=20, help="Units to add (default 20)")
+    parser.add_argument("--qty", type=int, default=1, help="Units to add (default 1)")
     args = parser.parse_args()
 
     try:

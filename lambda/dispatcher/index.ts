@@ -6,7 +6,7 @@
  *
  * Supported event types
  * ─────────────────────
- * 1. AWS End User Messaging Social (WhatsApp) events
+ * AWS End User Messaging Social (WhatsApp) events
  *    Delivered by the service as SNS notifications.  The SNS `Message` field
  *    contains a JSON string whose top-level key is `whatsAppWebhookEntry`.
  *    That value is ITSELF another JSON-encoded string (a second serialisation
@@ -24,14 +24,9 @@
  *        with reply sent back via EUMS.
  *    Seller commands come through the Telegram bot (handled by OpenClaw directly).
  *
- * 2. SES inbound email events (no-op)
- *    Email is no longer used as a 2-way channel. Seller commands flow through
- *    Telegram → OpenClaw.
- *
  * Environment variables
  * ─────────────────────
- *   OPENCLAW_GATEWAY_URL      – Base URL of the OpenClaw gateway
- *                               e.g. http://32.195.52.35:18789
+ *   OPENCLAW_GATEWAY_URL      – Base URL of the OpenClaw gateway (EKS NLB)
  *   OPENCLAW_GATEWAY_TOKEN    – Bearer token sent in every request to OpenClaw
  *   BEDROCK_AGENT_ID          – Bedrock Agent ID
  *   BEDROCK_AGENT_ALIAS_ID    – Bedrock Agent Alias ID
@@ -272,10 +267,6 @@ interface EUMSOuterEnvelope {
 }
 
 // ---------------------------------------------------------------------------
-// SES email payload types (kept minimal - email is now notification-only)
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
 // Record processors
 // ---------------------------------------------------------------------------
 
@@ -488,67 +479,39 @@ async function handleWhatsAppRecord(record: SNSEventRecord): Promise<void> {
   }
 }
 
-/**
- * Handles an SES inbound email SNS record.
- *
- * Email is no longer used as a 2-way channel. Seller notifications and
- * commands now flow through WhatsApp (seller messages → OpenClaw).
- * This handler only logs the event for visibility.
- */
-async function handleSesEmailRecord(record: SNSEventRecord): Promise<void> {
-  log("INFO", "SES email received (no-op, seller channel is Telegram now)", {
-    messageId: record.Sns.MessageId,
-  });
-}
-
 // ---------------------------------------------------------------------------
 // SNS source detection
 // ---------------------------------------------------------------------------
 
 /**
- * Determine the event type from the SNS record metadata.
- *
- * End User Messaging Social sets a specific MessageAttribute or uses a
- * recognisable TopicArn / Subject prefix.  We use a combination of:
- *   1. `record.Sns.Subject` – EUMS sets this to a well-known value
- *   2. `record.Sns.MessageAttributes` – EUMS injects `eventType`
- *   3. Falling back to payload inspection (presence of `whatsAppWebhookEntry`)
+ * Determine whether this SNS record is a WhatsApp event from End User
+ * Messaging Social. Uses subject, topic ARN, message attributes, and
+ * payload-level heuristics.
  */
-function detectEventType(record: SNSEventRecord): "whatsapp" | "ses" | "unknown" {
+function isWhatsAppEvent(record: SNSEventRecord): boolean {
   const subject = record.Sns.Subject ?? "";
   const topicArn = record.Sns.TopicArn ?? "";
   const attrs = record.Sns.MessageAttributes ?? {};
 
-  // End User Messaging Social publishes with this subject
-  if (subject === "WhatsAppWebhookEvent") {
-    return "whatsapp";
-  }
+  if (subject === "WhatsAppWebhookEvent") return true;
 
-  // Some deployments tag the topic ARN or inject a message attribute
   if (
     topicArn.toLowerCase().includes("whatsapp") ||
     topicArn.toLowerCase().includes("endusermessaging") ||
     attrs["eventType"]?.Value === "WhatsAppWebhookEvent"
   ) {
-    return "whatsapp";
+    return true;
   }
 
-  // SES notifications carry a `notificationType` field in the message body
-  // and typically have a Subject like "Amazon SES Email Receipt Notification"
-  if (subject.toLowerCase().includes("ses") || subject.toLowerCase().includes("email")) {
-    return "ses";
-  }
-
-  // Payload-level heuristic – parse just enough to classify
+  // Payload-level heuristic
   try {
     const parsed = JSON.parse(record.Sns.Message) as Record<string, unknown>;
-    if ("whatsAppWebhookEntry" in parsed) return "whatsapp";
-    if ("notificationType" in parsed && "mail" in parsed) return "ses";
+    if ("whatsAppWebhookEntry" in parsed) return true;
   } catch {
     // ignore parse errors here; they'll be handled in the specific processor
   }
 
-  return "unknown";
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -569,30 +532,21 @@ export const handler = async (
   const results = await Promise.allSettled(
     event.Records.map(async (record) => {
       const messageId = record.Sns.MessageId;
-      const eventType = detectEventType(record);
 
       log("INFO", "Processing SNS record", {
         messageId,
         topicArn: record.Sns.TopicArn,
         subject: record.Sns.Subject,
-        detectedType: eventType,
       });
 
-      switch (eventType) {
-        case "whatsapp":
-          await handleWhatsAppRecord(record);
-          break;
-
-        case "ses":
-          await handleSesEmailRecord(record);
-          break;
-
-        default:
-          log("WARN", "Unknown event type – record skipped", {
-            messageId,
-            subject: record.Sns.Subject,
-            topicArn: record.Sns.TopicArn,
-          });
+      if (isWhatsAppEvent(record)) {
+        await handleWhatsAppRecord(record);
+      } else {
+        log("WARN", "Non-WhatsApp event – record skipped", {
+          messageId,
+          subject: record.Sns.Subject,
+          topicArn: record.Sns.TopicArn,
+        });
       }
     })
   );
@@ -686,30 +640,6 @@ export const handler = async (
 //           }
 //         }
 //       ]
-//     }
-//   ]
-// }
-//
-// SES inbound email test event:
-// {
-//   "Records": [
-//     {
-//       "EventSource": "aws:sns",
-//       "EventVersion": "1.0",
-//       "EventSubscriptionArn": "arn:aws:sns:us-east-1:123456789012:claw-boutique-ses-topic:def456",
-//       "Sns": {
-//         "MessageId": "msg-uuid-0002",
-//         "Subject": "Amazon SES Email Receipt Notification",
-//         "TopicArn": "arn:aws:sns:us-east-1:123456789012:claw-boutique-ses-topic",
-//         "Timestamp": "2024-06-01T12:05:00.000Z",
-//         "Message": "{\"notificationType\":\"Received\",\"mail\":{\"source\":\"customer@example.com\",\"destination\":[\"hello@clawboutique.com\"],\"messageId\":\"ses-msg-001\",\"commonHeaders\":{\"from\":[\"Customer <customer@example.com>\"],\"to\":[\"hello@clawboutique.com\"],\"subject\":\"Appointment inquiry\",\"date\":\"Sat, 01 Jun 2024 12:05:00 +0000\"},\"headers\":[]},\"receipt\":{\"action\":{\"type\":\"S3\",\"bucketName\":\"claw-boutique-ses-inbox\",\"objectKey\":\"emails/ses-msg-001\"}},\"content\":null}",
-//         "MessageAttributes": {},
-//         "Type": "Notification",
-//         "UnsubscribeUrl": "https://sns.us-east-1.amazonaws.com/?Action=Unsubscribe&...",
-//         "SignatureVersion": "1",
-//         "Signature": "EXAMPLE",
-//         "SigningCertUrl": "https://sns.us-east-1.amazonaws.com/cert.pem"
-//       }
 //     }
 //   ]
 // }
