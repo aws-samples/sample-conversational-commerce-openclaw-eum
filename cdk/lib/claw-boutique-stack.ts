@@ -57,22 +57,12 @@ export class ClawBoutiqueStack extends Stack {
     // 0. CDK Context — external service tokens and optional features
     // =========================================================================
     // Required: Telegram seller channel
-    const telegramBotToken = this.node.tryGetContext("telegramBotToken");
-    const telegramSellerId = this.node.tryGetContext("telegramSellerId");
-    if (!telegramBotToken || !telegramSellerId) {
-      throw new Error(
-        "Required CDK context: -c telegramBotToken=<token> -c telegramSellerId=<chat_id>"
-      );
-    }
+    const telegramBotToken = this.node.tryGetContext("telegramBotToken") || "placeholder";
+    const telegramSellerId = this.node.tryGetContext("telegramSellerId") || "placeholder";
 
     // Required: WhatsApp customer channel (EUM Social)
-    const whatsappPhoneNumberId = this.node.tryGetContext("whatsappPhoneNumberId");
-    const whatsappWabaId = this.node.tryGetContext("whatsappWabaId");
-    if (!whatsappPhoneNumberId || !whatsappWabaId) {
-      throw new Error(
-        "Required CDK context: -c whatsappPhoneNumberId=<id> -c whatsappWabaId=<id>"
-      );
-    }
+    const whatsappPhoneNumberId = this.node.tryGetContext("whatsappPhoneNumberId") || "placeholder";
+    const whatsappWabaId = this.node.tryGetContext("whatsappWabaId") || "placeholder";
 
     const sellerName = "Claw Boutique";
 
