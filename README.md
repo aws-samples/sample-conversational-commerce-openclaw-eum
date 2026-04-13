@@ -147,8 +147,19 @@ CDK deploys all AWS resources in one command, including the EKS cluster, RDS dat
 git clone <this-repo>
 cd claw-boutique
 
+# Copy the context template and fill in your values
+cp cdk/cdk.context.example.json cdk/cdk.context.json
+# Edit cdk/cdk.context.json with your Telegram bot token, seller chat ID,
+# WhatsApp phone number ID, and WABA ID
+
 cd cdk && npm install
 npx cdk bootstrap
+npx cdk deploy
+```
+
+CDK reads credentials from `cdk/cdk.context.json` (gitignored). You can also pass them as CLI flags:
+
+```bash
 npx cdk deploy \
   -c telegramBotToken="<token>" \
   -c telegramSellerId="<id>" \

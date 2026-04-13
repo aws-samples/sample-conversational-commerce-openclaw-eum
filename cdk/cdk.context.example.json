@@ -1,0 +1,6 @@
+{
+  "telegramBotToken": "<your-telegram-bot-token>",
+  "telegramSellerId": "<your-telegram-chat-id>",
+  "whatsappPhoneNumberId": "<your-eums-phone-number-id>",
+  "whatsappWabaId": "<your-eums-waba-id>"
+}
