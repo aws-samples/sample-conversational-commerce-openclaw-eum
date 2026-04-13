@@ -30,10 +30,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 app = Flask(__name__)
-CORS(app, origins=[
-    "https://d1yis8p165yfn1.cloudfront.net",
-    "http://localhost:*",
-])
+CORS(app, origins="*")
 
 # ---------------------------------------------------------------------------
 # Database helpers
@@ -134,7 +131,7 @@ def _send_order_confirmation_email(
 
     from_name = os.environ.get("SES_FROM_NAME", "Claw Boutique").strip()
     sender = f"{from_name} <{from_addr}>" if from_name else from_addr
-    shop_url = os.environ.get("SHOP_URL", "https://d1yis8p165yfn1.cloudfront.net")
+    shop_url = os.environ.get("SHOP_URL", "")
 
     safe_name = html.escape(customer_name)
     safe_items = html.escape(items_summary)
@@ -278,7 +275,7 @@ def _send_refund_email(customer_email: str, customer_name: str, order_id: int):
 
     from_name = os.environ.get("SES_FROM_NAME", "Claw Boutique").strip()
     sender = f"{from_name} <{from_addr}>" if from_name else from_addr
-    shop_url = os.environ.get("SHOP_URL", "https://d1yis8p165yfn1.cloudfront.net")
+    shop_url = os.environ.get("SHOP_URL", "")
 
     safe_name = html.escape(customer_name)
 

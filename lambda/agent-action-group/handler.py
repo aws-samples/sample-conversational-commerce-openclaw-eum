@@ -5,8 +5,7 @@ Receives action group invocations from a Bedrock Agent and proxies them
 to the Store API. Uses only stdlib — no external dependencies required.
 
 Environment variables:
-  STORE_API_URL  Base URL of the Store API, e.g.
-                 https://jsy1qw47dk.execute-api.us-east-1.amazonaws.com/prod
+  STORE_API_URL  Base URL of the Store API (set by CDK)
 """
 import json
 import os
