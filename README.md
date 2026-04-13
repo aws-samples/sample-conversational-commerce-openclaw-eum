@@ -150,7 +150,7 @@ cd claw-boutique
 # Copy the context template and fill in your values
 cp cdk/cdk.context.example.json cdk/cdk.context.json
 # Edit cdk/cdk.context.json with your Telegram bot token, seller chat ID,
-# WhatsApp phone number ID, and WABA ID
+# WhatsApp phone number ID, WABA ID, and SES sender email
 
 cd cdk && npm install
 npx cdk bootstrap
@@ -164,7 +164,8 @@ npx cdk deploy \
   -c telegramBotToken="<token>" \
   -c telegramSellerId="<id>" \
   -c whatsappPhoneNumberId="<id>" \
-  -c whatsappWabaId="<id>"
+  -c whatsappWabaId="<id>" \
+  -c sesFromEmail="you@example.com"
 ```
 
 CDK handles database initialization (schema + seed data), Docker image build, ECR push, and EKS deployment automatically.
@@ -193,6 +194,14 @@ kubectl get pods -n default -l app=openclaw       # Check pod status
 kubectl logs -n default -l app=openclaw --tail=50  # View logs
 kubectl port-forward svc/openclaw 18789:80         # Local access at localhost:18789
 ```
+
+With the port-forward running, open `http://localhost:18789` to access the OpenClaw Control UI. The UI requires a gateway token for authentication. Get it from the running pod:
+
+```bash
+kubectl exec deploy/openclaw -c openclaw -- printenv OPENCLAW_GATEWAY_TOKEN
+```
+
+Paste the token into the Control UI settings (gear icon, top right). The token regenerates on every `cdk deploy`, so you will need to grab it again after redeployments.
 
 ---
 

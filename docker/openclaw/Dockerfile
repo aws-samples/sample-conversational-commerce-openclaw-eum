@@ -6,6 +6,15 @@ RUN apt-get update \
 
 RUN npm install -g openclaw@2026.3.2
 
+# Install tool scripts (Python CLI tools called by ClawBot)
+COPY openclaw/tools/ /usr/local/lib/claw-tools/
+RUN chmod +x /usr/local/lib/claw-tools/*.py \
+    && for f in /usr/local/lib/claw-tools/*.py; do \
+         name=$(basename "$f" .py); \
+         [ "$name" = "_api" ] && continue; \
+         ln -s "$f" "/usr/local/bin/$name"; \
+       done
+
 USER node
 WORKDIR /home/node
 RUN mkdir -p .openclaw

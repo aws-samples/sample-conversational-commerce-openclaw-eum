@@ -14,7 +14,7 @@
  * Deploy:
  *   npx cdk deploy -c telegramBotToken=xxx -c telegramSellerId=123 \
  *     -c whatsappPhoneNumberId=xxx -c whatsappWabaId=xxx \
- *     -c sesDomain=example.com
+ *     -c sesFromEmail=you@example.com
  */
 
 import {
@@ -76,8 +76,8 @@ export class ClawBoutiqueStack extends Stack {
 
     const sellerName = "Claw Boutique";
 
-    // Optional: SES for outbound order confirmation emails
-    const sesDomain = this.node.tryGetContext("sesDomain") || "";
+    // Optional: SES for outbound order confirmation emails (verified email address)
+    const sesFromEmail = this.node.tryGetContext("sesFromEmail") || "";
 
     // Generate a stable gateway token at synth time (shared between Lambda + EKS pod)
     const gatewayToken = crypto.randomBytes(32).toString("hex");
@@ -220,7 +220,7 @@ export class ClawBoutiqueStack extends Stack {
     // =========================================================================
     // 5. (SES inbound removed — email is outbound-only for order confirmations.
     //     SES send permissions are granted conditionally in section 9 if
-    //     sesDomain context is provided.)
+    //     sesFromEmail context is provided.  Use a verified email address.)
     // =========================================================================
 
     // =========================================================================
@@ -364,7 +364,8 @@ export class ClawBoutiqueStack extends Stack {
     // 8a. OpenClaw Docker image — built and pushed to ECR
     // =========================================================================
     const openclawImage = new ecr_assets.DockerImageAsset(this, "OpenClawImage", {
-      directory: path.join(__dirname, "../../docker/openclaw"),
+      directory: path.join(__dirname, "../.."),
+      file: "docker/openclaw/Dockerfile",
       platform: ecr_assets.Platform.LINUX_AMD64,
     });
 
@@ -508,81 +509,9 @@ export class ClawBoutiqueStack extends Stack {
       },
     });
 
-    // Deployment: OpenClaw + Redis sidecar
-    const deploymentManifest = cluster.addManifest("OpenClawDeployment", {
-      apiVersion: "apps/v1",
-      kind: "Deployment",
-      metadata: { name: "openclaw", namespace: "default" },
-      spec: {
-        replicas: 1,
-        selector: { matchLabels: { app: "openclaw" } },
-        template: {
-          metadata: { labels: { app: "openclaw" } },
-          spec: {
-            serviceAccountName: "openclaw",
-            initContainers: [
-              {
-                name: "copy-config",
-                image: "busybox:1.36",
-                command: ["sh", "-c",
-                  "cp /config/openclaw.json /home/node/.openclaw/openclaw.json && " +
-                  "mkdir -p /home/node/.openclaw/workspace && " +
-                  "cp /config/IDENTITY.md /home/node/.openclaw/workspace/IDENTITY.md && " +
-                  "cp /config/SOUL.md /home/node/.openclaw/workspace/SOUL.md && " +
-                  "rm -f /home/node/.openclaw/workspace/BOOTSTRAP.md && " +
-                  "chown -R 1000:1000 /home/node/.openclaw"
-                ],
-                volumeMounts: [
-                  { name: "openclaw-config-src", mountPath: "/config", readOnly: true },
-                  { name: "openclaw-data", mountPath: "/home/node/.openclaw" },
-                ],
-              },
-            ],
-            containers: [
-              {
-                name: "openclaw",
-                image: openclawImage.imageUri,
-                ports: [{ containerPort: 18789 }],
-                env: [
-                  { name: "OPENCLAW_GATEWAY_TOKEN", value: gatewayToken },
-                  { name: "AWS_REGION", value: "us-east-1" },
-                  { name: "REDIS_HOST", value: "localhost" },
-                  { name: "NODE_OPTIONS", value: "--max-old-space-size=1536" },
-                ],
-                volumeMounts: [
-                  { name: "openclaw-data", mountPath: "/home/node/.openclaw" },
-                ],
-                resources: {
-                  requests: { memory: "1Gi", cpu: "500m" },
-                  limits: { memory: "2Gi", cpu: "1000m" },
-                },
-              },
-              {
-                name: "redis",
-                image: "redis:7-alpine",
-                ports: [{ containerPort: 6379 }],
-                resources: {
-                  requests: { memory: "64Mi", cpu: "50m" },
-                  limits: { memory: "128Mi", cpu: "100m" },
-                },
-              },
-            ],
-            volumes: [
-              {
-                name: "openclaw-config-src",
-                configMap: { name: "openclaw-config" },
-              },
-              {
-                name: "openclaw-data",
-                emptyDir: {},
-              },
-            ],
-          },
-        },
-      },
-    });
-
     // Service: NLB to expose OpenClaw externally (Lambda not in VPC)
+    // NOTE: Deployment manifest is created after API Gateway (section 11)
+    // so it can reference storeApi.url for tool env vars.
     const serviceManifest = cluster.addManifest("OpenClawService", {
       apiVersion: "v1",
       kind: "Service",
@@ -719,7 +648,16 @@ export class ClawBoutiqueStack extends Stack {
       })
     );
 
-    if (sesDomain) {
+    storeApiRole.addToPolicy(
+      new iam.PolicyStatement({
+        sid: "SendWhatsAppMessages",
+        effect: iam.Effect.ALLOW,
+        actions: ["social-messaging:SendWhatsAppMessage"],
+        resources: ["*"],
+      })
+    );
+
+    if (sesFromEmail) {
       storeApiRole.addToPolicy(
         new iam.PolicyStatement({
           sid: "SendOrderEmails",
@@ -750,13 +688,15 @@ export class ClawBoutiqueStack extends Stack {
         OPENCLAW_BRIDGE_URL: openclawUrl,
         OPENCLAW_BRIDGE_TOKEN: gatewayToken,
         WHATSAPP_PHONE_NUMBER_ID: whatsappPhoneNumberId,
+        TELEGRAM_BOT_TOKEN: telegramBotToken,
+        TELEGRAM_SELLER_ID: telegramSellerId,
       },
     });
 
     storeApiFn.addEnvironment("SHOP_URL", `https://${distribution.distributionDomainName}`);
 
-    if (sesDomain) {
-      storeApiFn.addEnvironment("SES_FROM_EMAIL", `noreply@${sesDomain}`);
+    if (sesFromEmail) {
+      storeApiFn.addEnvironment("SES_FROM_EMAIL", sesFromEmail);
       storeApiFn.addEnvironment("SES_FROM_NAME", "Claw Boutique");
     }
 
@@ -825,6 +765,84 @@ export class ClawBoutiqueStack extends Stack {
       destinationBucket: websiteBucket,
       distribution,
       distributionPaths: ["/config.js"],
+    });
+
+    // =========================================================================
+    // 11b. OpenClaw Deployment (after API Gateway so tools get STORE_API_URL)
+    // =========================================================================
+    cluster.addManifest("OpenClawDeployment", {
+      apiVersion: "apps/v1",
+      kind: "Deployment",
+      metadata: { name: "openclaw", namespace: "default" },
+      spec: {
+        replicas: 1,
+        selector: { matchLabels: { app: "openclaw" } },
+        template: {
+          metadata: { labels: { app: "openclaw" } },
+          spec: {
+            serviceAccountName: "openclaw",
+            initContainers: [
+              {
+                name: "copy-config",
+                image: "busybox:1.36",
+                command: ["sh", "-c",
+                  "cp /config/openclaw.json /home/node/.openclaw/openclaw.json && " +
+                  "mkdir -p /home/node/.openclaw/workspace && " +
+                  "cp /config/IDENTITY.md /home/node/.openclaw/workspace/IDENTITY.md && " +
+                  "cp /config/SOUL.md /home/node/.openclaw/workspace/SOUL.md && " +
+                  "rm -f /home/node/.openclaw/workspace/BOOTSTRAP.md && " +
+                  "chown -R 1000:1000 /home/node/.openclaw"
+                ],
+                volumeMounts: [
+                  { name: "openclaw-config-src", mountPath: "/config", readOnly: true },
+                  { name: "openclaw-data", mountPath: "/home/node/.openclaw" },
+                ],
+              },
+            ],
+            containers: [
+              {
+                name: "openclaw",
+                image: openclawImage.imageUri,
+                ports: [{ containerPort: 18789 }],
+                env: [
+                  { name: "OPENCLAW_GATEWAY_TOKEN", value: gatewayToken },
+                  { name: "AWS_REGION", value: "us-east-1" },
+                  { name: "REDIS_HOST", value: "localhost" },
+                  { name: "NODE_OPTIONS", value: "--max-old-space-size=1536" },
+                  { name: "STORE_API_URL", value: storeApi.url },
+                  { name: "STORE_API_KEY", value: openclawApiKey.keyId },
+                ],
+                volumeMounts: [
+                  { name: "openclaw-data", mountPath: "/home/node/.openclaw" },
+                ],
+                resources: {
+                  requests: { memory: "1Gi", cpu: "500m" },
+                  limits: { memory: "2Gi", cpu: "1000m" },
+                },
+              },
+              {
+                name: "redis",
+                image: "redis:7-alpine",
+                ports: [{ containerPort: 6379 }],
+                resources: {
+                  requests: { memory: "64Mi", cpu: "50m" },
+                  limits: { memory: "128Mi", cpu: "100m" },
+                },
+              },
+            ],
+            volumes: [
+              {
+                name: "openclaw-config-src",
+                configMap: { name: "openclaw-config" },
+              },
+              {
+                name: "openclaw-data",
+                emptyDir: {},
+              },
+            ],
+          },
+        },
+      },
     });
 
     // =========================================================================
