@@ -402,22 +402,16 @@ def _send_order_survey(phone: str, name: str, order_id: int, item_names: list[st
 
 
 def _check_stock_and_alert(product_ids: list[int]):
-    """After an order, check if any purchased products are low stock and
-    notify the seller via Telegram."""
+    """After an order, send the seller a Telegram stock report for the
+    purchased products so they can restock if needed."""
     try:
         with get_db() as conn:
             with _cursor(conn) as cur:
                 fmt = ",".join(["%s"] * len(product_ids))
                 cur.execute(
-                    f"""SELECT p.id, p.name, p.stock_qty, p.category, p.size, p.color,
-                               COALESCE(SUM(oi.qty), 0) as units_sold_30d
+                    f"""SELECT p.id, p.name, p.stock_qty
                         FROM products p
-                        LEFT JOIN order_items oi ON oi.product_id = p.id
-                        LEFT JOIN orders o ON o.id = oi.order_id
-                            AND o.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-                            AND o.status NOT IN ('cancelled', 'refunded')
-                        WHERE p.id IN ({fmt})
-                        GROUP BY p.id""",
+                        WHERE p.id IN ({fmt})""",
                     product_ids,
                 )
                 rows = cur.fetchall()
@@ -425,33 +419,12 @@ def _check_stock_and_alert(product_ids: list[int]):
         lines = []
         for r in rows:
             stock = int(r["stock_qty"])
-            sold = int(r["units_sold_30d"])
-            daily_rate = sold / 30.0 if sold > 0 else 0
-            if daily_rate > 0 and stock > 0:
-                days_left = round(stock / daily_rate, 1)
-            else:
-                days_left = 0 if stock == 0 else None
+            lines.append(f"{r['name']} - {stock} in stock")
 
-            if stock == 0:
-                lines.append(f"OUT OF STOCK: {r['name']}")
-            elif days_left is not None and days_left <= 7:
-                reorder = max(0, round(daily_rate * 30 - stock))
-                lines.append(
-                    f"LOW STOCK: {r['name']} - {stock} left, "
-                    f"~{days_left} days at {daily_rate:.1f}/day. "
-                    f"Suggest reorder: {reorder}"
-                )
-            elif stock <= 5:
-                lines.append(f"LOW STOCK: {r['name']} - only {stock} units")
-
-        if not lines:
-            return  # stock is healthy, no alert needed
-
-        product_names = [r["name"] for r in rows if int(r["stock_qty"]) <= 5]
         msg = (
-            "[Claw Boutique - Stock Alert]\n\n"
+            "[Claw Boutique - Stock Report]\n\n"
             + "\n".join(lines)
-            + "\n\nReply 'restock <product>' to restock."
+            + "\n\nReply 'restock <product>' to add inventory."
         )
         _notify_seller(msg)
     except Exception:
