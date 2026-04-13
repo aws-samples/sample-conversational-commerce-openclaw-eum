@@ -1,6 +1,6 @@
 # Claw Boutique
 
-AI-powered WhatsApp e-commerce bot built on AWS. Customers browse and order through a web storefront, then receive WhatsApp messages and emails for order confirmation, surveys, and refunds. The store owner manages everything through Telegram, where an AI agent (Claude on EKS) handles restock, refund, and order commands.
+OpenClaw-powered WhatsApp e-commerce bot built on AWS. Customers browse and order through a web storefront, then receive WhatsApp messages and emails for order confirmation, surveys, and refunds. The store owner manages everything through Telegram, where an AI agent (Claude on EKS) handles restock, refund, and order commands.
 
 ![Architecture](docs/architecture.drawio.png)
 
@@ -104,9 +104,6 @@ The seller opens the admin dashboard to see orders (now showing "refunded" statu
 |---------|-------------|
 | `restock <product>` | Add 1 unit to inventory (or specify qty) |
 | `apologize` | Send WhatsApp apology + refund email, resolve escalation |
-| `confirm <order>` | Confirm a pending order |
-| `cancel <order>` | Cancel an order |
-| `ship <order>` | Mark order as shipped |
 | `stock report` | Get current inventory levels |
 | `orders` | List recent or pending orders |
 
@@ -141,7 +138,16 @@ claw-boutique/
 
 ## Deployment
 
-CDK deploys all AWS resources in one command, including the EKS cluster, RDS database, and OpenClaw container.
+### Prerequisites
+
+- AWS CLI configured with credentials
+- Node.js 18+
+- Docker (or Finch) running
+- A Telegram bot token (from @BotFather)
+- A WhatsApp Business Account linked to AWS End User Messaging Social
+- A verified SES email address
+
+### Deploy
 
 ```bash
 git clone <this-repo>
@@ -168,40 +174,50 @@ npx cdk deploy \
   -c sesFromEmail="you@example.com"
 ```
 
-CDK handles database initialization (schema + seed data), Docker image build, ECR push, and EKS deployment automatically.
+CDK handles database initialization (schema + seed data), Docker image build, ECR push, and EKS deployment automatically. Cold deploy takes about 25-30 minutes (EKS cluster creation dominates).
 
-After CDK finishes:
+### Destroy
+
+```bash
+cd cdk && npx cdk destroy
+```
+
+No context values needed for destroy.
+
+### Post-deploy setup (one-time)
 
 1. **WhatsApp** -- CDK automatically links your WABA to the SNS topic. No manual step needed.
-2. **Telegram (one-time)** -- Send `/start` to the bot from the seller's Telegram account.
-3. **SES (one-time)** -- Verify your sender email address or domain in the SES console.
+2. **Telegram** -- Send `/start` to the bot from the seller's Telegram account.
+3. **SES** -- Verify your sender email address in the SES console.
 
 Steps 2 and 3 only need to be done once per account. Subsequent deploys reuse existing config.
 
 ### Connecting to OpenClaw on EKS
 
-After deploy, CDK prints a `ClawBoutiqueClusterConfigCommand` output with the exact command. Copy and run it:
+After deploy, CDK prints a `ClawBoutiqueClusterConfigCommand` output with the `aws eks update-kubeconfig` command. Copy and run it to configure kubectl.
 
-```bash
-# Printed in CDK outputs -- copy the exact command from your deploy
-aws eks update-kubeconfig --name claw-boutique --region us-east-1 --role-arn arn:aws:iam::<account>:role/Admin
-```
-
-Then:
+Then check the pod and view logs:
 
 ```bash
 kubectl get pods -n default -l app=openclaw       # Check pod status
 kubectl logs -n default -l app=openclaw --tail=50  # View logs
-kubectl port-forward svc/openclaw 18789:80         # Local access at localhost:18789
 ```
 
-With the port-forward running, open `http://localhost:18789` to access the OpenClaw Control UI. The UI requires a gateway token for authentication. Get it from the running pod:
+### OpenClaw Control UI
+
+The Control UI requires a secure context (HTTPS or localhost). Use kubectl port-forward to access it locally:
+
+```bash
+kubectl port-forward svc/openclaw 18789:80
+```
+
+Open `http://localhost:18789` in your browser. The UI requires a gateway token for authentication. Get it from the running pod:
 
 ```bash
 kubectl exec deploy/openclaw -c openclaw -- printenv OPENCLAW_GATEWAY_TOKEN
 ```
 
-Paste the token into the Control UI settings (gear icon, top right). The token regenerates on every `cdk deploy`, so you will need to grab it again after redeployments.
+Paste the token into the Control UI settings (gear icon, top right). The token regenerates on every `cdk deploy`, so you need to grab it again after redeployments.
 
 ---
 
