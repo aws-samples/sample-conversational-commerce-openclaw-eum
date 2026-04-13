@@ -755,6 +755,7 @@ export class ClawBoutiqueStack extends Stack {
       destinationBucket: websiteBucket,
       distribution,
       distributionPaths: ["/config.js"],
+      prune: false,
     });
 
     // =========================================================================
@@ -1155,6 +1156,41 @@ export class ClawBoutiqueStack extends Stack {
     new CfnOutput(this, "BedrockAgentAliasId", {
       exportName: "ClawBoutiqueBedrockAgentAliasId",
       value: bedrockAgentAlias.attrAgentAliasId,
+    });
+
+    // =========================================================================
+    // 14. Quick Reference (printed after deploy)
+    // =========================================================================
+
+    new CfnOutput(this, "Storefront", {
+      value: `https://${distribution.distributionDomainName}`,
+      description: "Open this URL to browse the storefront.",
+    });
+
+    new CfnOutput(this, "AdminDashboard", {
+      value: `https://${distribution.distributionDomainName}/admin.html`,
+      description: "Open this URL for the admin dashboard.",
+    });
+
+    new CfnOutput(this, "OpenClawConnectCommand", {
+      value: `aws eks update-kubeconfig --name ${cluster.clusterName} --region ${this.region} --role-arn arn:aws:iam::${this.account}:role/Admin && kubectl port-forward svc/openclaw 18789:80`,
+      description:
+        "Run this to connect kubectl and open the OpenClaw Control UI at http://localhost:18789",
+    });
+
+    new CfnOutput(this, "SesFromEmail", {
+      value: sesFromEmail || "(not configured)",
+      description: "SES sender email for order confirmations and refunds.",
+    });
+
+    new CfnOutput(this, "WhatsAppPhoneNumberId", {
+      value: whatsappPhoneNumberId,
+      description: "WhatsApp phone number ID linked to this stack.",
+    });
+
+    new CfnOutput(this, "TelegramSellerId", {
+      value: telegramSellerId,
+      description: "Telegram seller chat ID receiving notifications.",
     });
   }
 }
