@@ -343,12 +343,20 @@ export class ClawBoutiqueStack extends Stack {
       kubectlLayer: new KubectlV30Layer(this, "KubectlLayer"),
       vpc,
       mastersRole,
+      authenticationMode: eks.AuthenticationMode.API_AND_CONFIG_MAP,
       defaultCapacity: 1,
       defaultCapacityInstance: ec2.InstanceType.of(
         ec2.InstanceClass.T3,
         ec2.InstanceSize.MEDIUM
       ),
     });
+
+    // Grant any IAM principal in this account cluster admin access
+    cluster.grantAccess("AccountAccess", `arn:aws:iam::${this.account}:root`, [
+      eks.AccessPolicy.fromAccessPolicyName("AmazonEKSClusterAdminPolicy", {
+        accessScopeType: eks.AccessScopeType.CLUSTER,
+      }),
+    ]);
 
     // =========================================================================
     // 8a. OpenClaw Docker image — built and pushed to ECR
@@ -1173,7 +1181,7 @@ export class ClawBoutiqueStack extends Stack {
     });
 
     new CfnOutput(this, "OpenClawConnectCommand", {
-      value: `aws eks update-kubeconfig --name ${cluster.clusterName} --region ${this.region} --role-arn arn:aws:iam::${this.account}:role/Admin && kubectl port-forward svc/openclaw 18789:80`,
+      value: `aws eks update-kubeconfig --name ${cluster.clusterName} --region ${this.region} && kubectl port-forward svc/openclaw 18789:80`,
       description:
         "Run this to connect kubectl and open the OpenClaw Control UI at http://localhost:18789",
     });
