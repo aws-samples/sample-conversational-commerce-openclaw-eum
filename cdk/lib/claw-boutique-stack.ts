@@ -941,7 +941,7 @@ export class ClawBoutiqueStack extends Stack {
         "Keep replies short and conversational — this is WhatsApp chat, not email. " +
         "Use plain text only, no markdown, no bullet points with asterisks. " +
         "When a customer asks about products, call list_products with relevant filters. " +
-        "You CANNOT place orders. When a customer wants to buy something, give them the storefront link: https://d1yis8p165yfn1.cloudfront.net " +
+        `You CANNOT place orders. When a customer wants to buy something, give them the storefront link: https://${distribution.distributionDomainName} ` +
         "and tell them to complete their purchase there. " +
         "When a customer reports a problem, use create_escalation to log it so the owner is notified. " +
         "Be friendly but brief. Never make up product details — always call a tool to get real data. " +

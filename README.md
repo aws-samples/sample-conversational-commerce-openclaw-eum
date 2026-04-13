@@ -171,9 +171,28 @@ CDK handles database initialization (schema + seed data), Docker image build, EC
 
 After CDK finishes:
 
-1. **WhatsApp** -- Link your WABA phone number to the SNS topic ARN in the EUM Social console
-2. **Telegram** -- Send `/start` to the bot from the seller's Telegram account
-3. **SES** -- Verify your sender email address for customer emails
+1. **WhatsApp** -- CDK automatically links your WABA to the SNS topic. No manual step needed.
+2. **Telegram (one-time)** -- Send `/start` to the bot from the seller's Telegram account.
+3. **SES (one-time)** -- Verify your sender email address or domain in the SES console.
+
+Steps 2 and 3 only need to be done once per account. Subsequent deploys reuse existing config.
+
+### Connecting to OpenClaw on EKS
+
+After deploy, CDK prints a `ClawBoutiqueClusterConfigCommand` output with the exact command. Copy and run it:
+
+```bash
+# Printed in CDK outputs -- copy the exact command from your deploy
+aws eks update-kubeconfig --name claw-boutique --region us-east-1 --role-arn arn:aws:iam::<account>:role/Admin
+```
+
+Then:
+
+```bash
+kubectl get pods -n default -l app=openclaw       # Check pod status
+kubectl logs -n default -l app=openclaw --tail=50  # View logs
+kubectl port-forward svc/openclaw 18789:18789      # Local access at localhost:18789
+```
 
 ---
 
