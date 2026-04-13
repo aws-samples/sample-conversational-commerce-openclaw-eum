@@ -191,7 +191,7 @@ Then:
 ```bash
 kubectl get pods -n default -l app=openclaw       # Check pod status
 kubectl logs -n default -l app=openclaw --tail=50  # View logs
-kubectl port-forward svc/openclaw 18789:18789      # Local access at localhost:18789
+kubectl port-forward svc/openclaw 18789:80         # Local access at localhost:18789
 ```
 
 ---

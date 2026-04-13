@@ -599,7 +599,7 @@ export class ClawBoutiqueStack extends Stack {
       spec: {
         type: "LoadBalancer",
         selector: { app: "openclaw" },
-        ports: [{ port: 18789, targetPort: 18789 }],
+        ports: [{ port: 80, targetPort: 18789 }],
       },
     });
 
@@ -617,7 +617,7 @@ export class ClawBoutiqueStack extends Stack {
     );
     openclawHostname.node.addDependency(serviceManifest);
 
-    const openclawUrl = `http://${openclawHostname.value}:18789`;
+    const openclawUrl = `http://${openclawHostname.value}`;
 
     // =========================================================================
     // 8d. WhatsApp-to-SNS Event Destination
