@@ -134,6 +134,9 @@ export class ClawBoutiqueStack extends Stack {
         iam.ManagedPolicy.fromAwsManagedPolicyName(
           "service-role/AWSLambdaBasicExecutionRole"
         ),
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "service-role/AWSLambdaVPCAccessExecutionRole"
+        ),
       ],
     });
 
@@ -169,7 +172,27 @@ export class ClawBoutiqueStack extends Stack {
     );
 
     // =========================================================================
-    // 4. Lambda Dispatcher — function
+    // 4a. VPC — networking for EKS, RDS, and Lambda
+    // =========================================================================
+    const vpc = new ec2.Vpc(this, "ClawBoutiqueVpc", {
+      maxAzs: 2,
+      natGateways: 1,
+      subnetConfiguration: [
+        {
+          name: "Public",
+          subnetType: ec2.SubnetType.PUBLIC,
+          cidrMask: 24,
+        },
+        {
+          name: "Private",
+          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+          cidrMask: 24,
+        },
+      ],
+    });
+
+    // =========================================================================
+    // 4b. Lambda Dispatcher — function
     // =========================================================================
     const dispatcherLogGroup = new logs.LogGroup(
       this,
@@ -195,6 +218,8 @@ export class ClawBoutiqueStack extends Stack {
       timeout: Duration.seconds(30),
       memorySize: 256,
       logGroup: dispatcherLogGroup,
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
       environment: {
         INBOUND_TOPIC_ARN: inboundTopic.topicArn,
         WHATSAPP_PHONE_NUMBER_ID: whatsappPhoneNumberId,
@@ -212,26 +237,6 @@ export class ClawBoutiqueStack extends Stack {
     //     SES send permissions are granted conditionally in section 9 if
     //     sesFromEmail context is provided.  Use a verified email address.)
     // =========================================================================
-
-    // =========================================================================
-    // 6. VPC — networking for EKS and RDS
-    // =========================================================================
-    const vpc = new ec2.Vpc(this, "ClawBoutiqueVpc", {
-      maxAzs: 2,
-      natGateways: 1,
-      subnetConfiguration: [
-        {
-          name: "Public",
-          subnetType: ec2.SubnetType.PUBLIC,
-          cidrMask: 24,
-        },
-        {
-          name: "Private",
-          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
-          cidrMask: 24,
-        },
-      ],
-    });
 
     // =========================================================================
     // 7. RDS MySQL Database
@@ -507,7 +512,7 @@ export class ClawBoutiqueStack extends Stack {
       },
     });
 
-    // Service: NLB to expose OpenClaw externally (Lambda not in VPC)
+    // Service: Internal NLB to expose OpenClaw to VPC-only traffic (Lambda, etc.)
     // NOTE: Deployment manifest is created after API Gateway (section 11)
     // so it can reference storeApi.url for tool env vars.
     const serviceManifest = cluster.addManifest("OpenClawService", {
@@ -518,7 +523,7 @@ export class ClawBoutiqueStack extends Stack {
         namespace: "default",
         annotations: {
           "service.beta.kubernetes.io/aws-load-balancer-type": "nlb",
-          "service.beta.kubernetes.io/aws-load-balancer-scheme": "internet-facing",
+          "service.beta.kubernetes.io/aws-load-balancer-internal": "true",
           "service.beta.kubernetes.io/aws-load-balancer-target-group-attributes":
             "preserve_client_ip.enabled=false",
         },

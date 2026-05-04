@@ -2,7 +2,7 @@
 
 OpenClaw-powered WhatsApp e-commerce bot built on AWS. Customers browse and order through a web storefront, then receive WhatsApp messages and emails for order confirmation, surveys, and refunds. The store owner manages everything through Telegram, where an AI agent (Claude on EKS) handles restock, refund, and order commands.
 
-![Architecture](docs/architecture.png)
+![Architecture](docs/architecture.drawio.png)
 
 ## How it works
 
@@ -163,18 +163,9 @@ npx cdk bootstrap
 npx cdk deploy
 ```
 
-CDK reads credentials from `cdk/cdk.context.json` (gitignored). You can also pass them as CLI flags:
+**Security note:** Store sensitive values (Telegram bot token, WhatsApp IDs) in `cdk/cdk.context.json`, which is gitignored. Do not pass tokens as `-c` CLI flags -- they are visible in shell history and process listings. For CI/CD pipelines, use AWS Secrets Manager or AWS Systems Manager Parameter Store instead.
 
-```bash
-npx cdk deploy \
-  -c telegramBotToken="<token>" \
-  -c telegramSellerId="<id>" \
-  -c whatsappPhoneNumberId="<id>" \
-  -c whatsappWabaId="<id>" \
-  -c sesFromEmail="you@example.com"
-```
-
-CDK handles database initialization (schema + seed data), Docker image build, ECR push, and EKS deployment automatically. Cold deploy takes about 25-30 minutes (EKS cluster creation dominates).
+CDK handles database initialization (schema + seed data), Docker image build, ECR push, and EKS deployment automatically. A first-time deploy takes about 25-30 minutes (EKS cluster creation dominates).
 
 ### Destroy
 

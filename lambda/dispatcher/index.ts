@@ -72,6 +72,33 @@ if (!WHATSAPP_PHONE_NUMBER_ID) {
 }
 
 // ---------------------------------------------------------------------------
+// Per-sender rate limiting (in-memory, per Lambda instance)
+// ---------------------------------------------------------------------------
+
+const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
+const RATE_LIMIT_MAX = 5; // max Bedrock Agent calls per sender per window
+
+/** Map of sender phone → list of invocation timestamps within the window. */
+const senderTimestamps: Map<string, number[]> = new Map();
+
+/**
+ * Returns true if the sender has exceeded the rate limit.
+ * Cleans up expired timestamps as a side effect.
+ */
+function isRateLimited(sender: string): boolean {
+  const now = Date.now();
+  const cutoff = now - RATE_LIMIT_WINDOW_MS;
+  const timestamps = (senderTimestamps.get(sender) ?? []).filter((t) => t > cutoff);
+  if (timestamps.length >= RATE_LIMIT_MAX) {
+    senderTimestamps.set(sender, timestamps);
+    return true;
+  }
+  timestamps.push(now);
+  senderTimestamps.set(sender, timestamps);
+  return false;
+}
+
+// ---------------------------------------------------------------------------
 // AWS SDK clients
 // ---------------------------------------------------------------------------
 
@@ -409,6 +436,16 @@ async function handleWhatsAppRecord(record: SNSEventRecord): Promise<void> {
             }
             // If review submission failed (e.g. no order found), fall through to Bedrock Agent
             log("INFO", "Review submission failed, falling through to Bedrock Agent", { from: senderPhone });
+          }
+
+          // Per-sender rate limit check before calling Bedrock
+          if (isRateLimited(senderPhone)) {
+            log("WARN", "Rate limited sender", { from: senderPhone });
+            await sendWhatsAppReply(
+              senderPhone,
+              "You're sending messages too quickly. Please wait a moment and try again."
+            );
+            continue;
           }
 
           log("INFO", "Invoking Bedrock Agent", {
