@@ -1,6 +1,6 @@
 # Claw Boutique
 
-OpenClaw-powered WhatsApp e-commerce bot built on AWS. Customers browse and order through a web storefront, then receive WhatsApp messages and emails for order confirmation, surveys, and refunds. The store owner manages everything through Telegram, where an AI agent (Claude on EKS) handles restock, refund, and order commands.
+OpenClaw-powered WhatsApp e-commerce bot built on AWS. Customers browse and order through a web storefront, then receive WhatsApp messages and emails for order confirmation, surveys, and refunds. The store owner manages everything through Telegram, where an AI agent (Claude on EKS) handles restock, refund, and order commands. The buyer-facing WhatsApp agent runs on Bedrock AgentCore Runtime using the Strands Agents SDK.
 
 ![Architecture](docs/architecture.drawio.png)
 
@@ -8,7 +8,7 @@ OpenClaw-powered WhatsApp e-commerce bot built on AWS. Customers browse and orde
 
 Two AI models, two channels:
 
-- **Customer channel (WhatsApp)** -- A Bedrock Agent (Nova Lite) handles real-time conversations. Customer messages arrive via End User Messaging Social, route through SNS to a Dispatcher Lambda, and get processed by the agent. Fast and cheap for high-volume tool-calling.
+- **Customer channel (WhatsApp)** -- A Strands Agent (Nova Lite) runs on Bedrock AgentCore Runtime with AgentCore Memory for session continuity. Customer messages arrive via End User Messaging Social, route through SNS to a Dispatcher Lambda, and get processed by the agent. Fast and cheap for high-volume tool-calling.
 - **Seller channel (Telegram)** -- OpenClaw runs Claude on EKS. The store owner receives stock alerts, review escalations, and order notifications on Telegram. They reply with commands like "restock", "apologize", or "ship order 42", and ClawBot executes them.
 - **Web storefront** -- CloudFront serves a static site from S3. Checkout calls the Store API through API Gateway.
 
@@ -21,9 +21,10 @@ All three channels share the same Store API Lambda and RDS MySQL database.
 | End User Messaging Social | Managed WhatsApp Business integration |
 | Telegram Bot API | Seller notification and command channel |
 | SNS | Event bus for inbound WhatsApp messages |
-| Lambda (Dispatcher) | Routes WhatsApp events to Bedrock Agent or Store API |
+| Lambda (Dispatcher) | Routes WhatsApp events to AgentCore Runtime |
 | Lambda (Store API) | Flask REST API for orders, products, reviews, escalations |
-| Bedrock Agents (Nova Lite) | Real-time customer WhatsApp chat |
+| Bedrock AgentCore Runtime | Hosts the Strands Agent container (Nova Lite) for customer chat |
+| Bedrock AgentCore Memory | Conversation history per customer phone number |
 | EKS | Hosts OpenClaw gateway (Claude) for the seller Telegram channel |
 | RDS MySQL | Products, customers, orders, reviews, escalations |
 | SES | Order confirmation, shipping, and refund emails |
@@ -94,7 +95,7 @@ The seller opens the admin dashboard to see orders (now showing "refunded" statu
 
 ## Other features
 
-**Order via WhatsApp** -- Customers can browse and order by texting the WhatsApp business number directly. The Bedrock Agent handles the full conversation.
+**Order via WhatsApp** -- Customers can browse and order by texting the WhatsApp business number directly. The Strands Agent on AgentCore handles the full conversation.
 
 <img src="docs/mockup-wa-order.png" width="380" alt="WhatsApp order conversation">
 
@@ -117,7 +118,9 @@ The seller opens the admin dashboard to see orders (now showing "refunded" statu
 
 ```
 claw-boutique/
-  cdk/                    CDK stack (EKS, RDS, VPC, Lambda, SNS, SES, S3, CloudFront)
+  agents/
+    buyer-agent/          Strands Agent for WhatsApp (Python, deployed to AgentCore Runtime)
+  cdk/                    CDK stack (EKS, RDS, VPC, Lambda, SNS, SES, S3, CloudFront, AgentCore)
   docker/openclaw/        Dockerfile for OpenClaw container (built by CDK, pushed to ECR)
   lambda/
     dispatcher/           SNS event router (TypeScript)

@@ -40,7 +40,7 @@
         <mxCell id="dispatcher" value="Dispatcher Lambda&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;(Message Router)&lt;/font&gt;" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#ED7100;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;" parent="1" vertex="1">
           <mxGeometry x="820" y="340" width="60" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="bedrock" value="Bedrock Agent&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;(Amazon Nova Lite)&lt;/font&gt;" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#01A88D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.sagemaker;" parent="1" vertex="1">
+        <mxCell id="bedrock" value="AgentCore Runtime&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;(Strands Agent, Nova Lite)&lt;/font&gt;" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#01A88D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.sagemaker;" parent="1" vertex="1">
           <mxGeometry x="1000" y="340" width="60" height="60" as="geometry" />
         </mxCell>
         <mxCell id="apigw" value="API Gateway&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;REST Endpoint&lt;/font&gt;" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#E7157B;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;" parent="1" vertex="1">
@@ -74,7 +74,7 @@
         <mxCell id="e4" value="real-time chat" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" parent="1" source="dispatcher" target="bedrock" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e5" value="action groups" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" parent="1" source="bedrock" target="store-api" edge="1">
+        <mxCell id="e5" value="tool calls" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" parent="1" source="bedrock" target="store-api" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;" parent="1" source="customer-web" target="cf" edge="1">

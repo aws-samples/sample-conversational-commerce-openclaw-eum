@@ -12,9 +12,9 @@
     "build:deploy-clean": "bash build.sh --clean"
   },
   "dependencies": {
-    "axios": "^1.7.2",
-    "@aws-sdk/client-bedrock-agent-runtime": "^3.700.0",
-    "@aws-sdk/client-socialmessaging": "^3.700.0"
+    "@aws-sdk/client-bedrock-agentcore": "^3.1045.0",
+    "@aws-sdk/client-socialmessaging": "^3.700.0",
+    "axios": "^1.7.2"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.140",

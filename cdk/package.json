@@ -26,6 +26,7 @@
     "typescript": "~5.4.5"
   },
   "dependencies": {
+    "@aws-cdk/aws-bedrock-agentcore-alpha": "^2.244.0-alpha.0",
     "@aws-cdk/lambda-layer-kubectl-v30": "^2.0.4",
     "aws-cdk-lib": "^2.170.0",
     "constructs": "^10.0.0",

@@ -1,7 +1,7 @@
 /**
  * Claw Boutique – Lambda Dispatcher
  * ----------------------------------
- * Consumes SNS messages and routes inbound events to Bedrock Agent (WhatsApp)
+ * Consumes SNS messages and routes inbound events to AgentCore Runtime (WhatsApp)
  * or the OpenClaw gateway (SES email, WhatsApp statuses).
  *
  * Supported event types
@@ -20,25 +20,24 @@
  *                  └─ .entry[].changes[].value.statuses[]     (delivery receipts)
  *
  *    Routing:
- *      - All messages → routed to Bedrock Agent (Nova Lite) for customer support,
- *        with reply sent back via EUMS.
+ *      - All messages → routed to AgentCore Runtime (Strands Agent, Nova Lite)
+ *        for customer support, with reply sent back via EUMS.
  *    Seller commands come through the Telegram bot (handled by OpenClaw directly).
  *
  * Environment variables
  * ─────────────────────
  *   OPENCLAW_GATEWAY_URL      – Base URL of the OpenClaw gateway (EKS NLB)
  *   OPENCLAW_GATEWAY_TOKEN    – Bearer token sent in every request to OpenClaw
- *   BEDROCK_AGENT_ID          – Bedrock Agent ID
- *   BEDROCK_AGENT_ALIAS_ID    – Bedrock Agent Alias ID
+ *   AGENT_RUNTIME_ARN         – AgentCore Runtime ARN
  *   WHATSAPP_PHONE_NUMBER_ID  – EUMS origination phone number ID
  *   (Seller commands arrive via Telegram, not through this Lambda)
  */
 
 import axios, { AxiosError } from "axios";
 import {
-  BedrockAgentRuntimeClient,
-  InvokeAgentCommand,
-} from "@aws-sdk/client-bedrock-agent-runtime";
+  BedrockAgentCoreClient,
+  InvokeAgentRuntimeCommand,
+} from "@aws-sdk/client-bedrock-agentcore";
 import {
   SocialMessagingClient,
   SendWhatsAppMessageCommand,
@@ -56,16 +55,15 @@ import type {
 
 const GATEWAY_URL = (process.env.OPENCLAW_GATEWAY_URL ?? "").replace(/\/$/, "");
 const GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN ?? "";
-const BEDROCK_AGENT_ID = process.env.BEDROCK_AGENT_ID ?? "";
-const BEDROCK_AGENT_ALIAS_ID = process.env.BEDROCK_AGENT_ALIAS_ID ?? "";
+const AGENT_RUNTIME_ARN = process.env.AGENT_RUNTIME_ARN ?? "";
 const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID ?? "";
 const STORE_API_URL = (process.env.STORE_API_URL ?? "").replace(/\/$/, "");
 
 if (!GATEWAY_URL) {
   console.warn("[dispatcher] OPENCLAW_GATEWAY_URL is not set – SES/status POSTs will fail");
 }
-if (!BEDROCK_AGENT_ID || !BEDROCK_AGENT_ALIAS_ID) {
-  console.warn("[dispatcher] BEDROCK_AGENT_ID or BEDROCK_AGENT_ALIAS_ID is not set – WhatsApp messages will fail");
+if (!AGENT_RUNTIME_ARN) {
+  console.warn("[dispatcher] AGENT_RUNTIME_ARN is not set – WhatsApp messages will fail");
 }
 if (!WHATSAPP_PHONE_NUMBER_ID) {
   console.warn("[dispatcher] WHATSAPP_PHONE_NUMBER_ID is not set – WhatsApp replies will fail");
@@ -76,7 +74,7 @@ if (!WHATSAPP_PHONE_NUMBER_ID) {
 // ---------------------------------------------------------------------------
 
 const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
-const RATE_LIMIT_MAX = 5; // max Bedrock Agent calls per sender per window
+const RATE_LIMIT_MAX = 5; // max AgentCore Runtime calls per sender per window
 
 /** Map of sender phone → list of invocation timestamps within the window. */
 const senderTimestamps: Map<string, number[]> = new Map();
@@ -102,7 +100,7 @@ function isRateLimited(sender: string): boolean {
 // AWS SDK clients
 // ---------------------------------------------------------------------------
 
-const bedrockAgentClient = new BedrockAgentRuntimeClient({});
+const agentCoreClient = new BedrockAgentCoreClient({});
 const socialMessagingClient = new SocialMessagingClient({});
 
 // ---------------------------------------------------------------------------
@@ -158,26 +156,40 @@ async function postToUrl(url: string, body: unknown): Promise<unknown> {
 }
 
 /**
- * Invoke the Bedrock Agent with the customer's message text and return the
- * agent's reply by collecting all streaming response chunks.
+ * Invoke the AgentCore Runtime with the customer's message text and return
+ * the agent's reply by collecting the streaming response.
  */
-async function invokeBedrockAgent(senderPhone: string, messageText: string): Promise<string> {
-  const command = new InvokeAgentCommand({
-    agentId: BEDROCK_AGENT_ID,
-    agentAliasId: BEDROCK_AGENT_ALIAS_ID,
-    sessionId: senderPhone.replace(/\+/g, ""),
-    inputText: messageText,
+async function invokeAgentRuntime(senderPhone: string, messageText: string): Promise<string> {
+  // AgentCore requires runtimeSessionId to be at least 33 chars
+  const sessionId = senderPhone.replace(/\+/g, "").padEnd(33, "0");
+
+  const payload = JSON.stringify({
+    prompt: messageText,
+    session_id: sessionId,
   });
 
-  const response = await bedrockAgentClient.send(command);
+  const command = new InvokeAgentRuntimeCommand({
+    agentRuntimeArn: AGENT_RUNTIME_ARN,
+    runtimeSessionId: sessionId,
+    payload: new TextEncoder().encode(payload),
+  });
+
+  const response = await agentCoreClient.send(command);
+
+  // The response.response is an SdkStream (readable stream with transformToString)
   let replyText = "";
-  if (response.completion) {
-    for await (const event of response.completion) {
-      if (event.chunk?.bytes) {
-        replyText += new TextDecoder().decode(event.chunk.bytes);
+  if (response.response) {
+    const body = await (response.response as any).transformToString();
+    if (body) {
+      try {
+        const parsed = JSON.parse(body);
+        replyText = parsed.response ?? parsed.output ?? parsed.text ?? body;
+      } catch {
+        replyText = body;
       }
     }
   }
+
   return replyText;
 }
 
@@ -390,7 +402,7 @@ async function handleWhatsAppRecord(record: SNSEventRecord): Promise<void> {
           phoneNumberId: value.metadata?.phone_number_id,
         });
 
-        // Route each message through Bedrock Agent and reply directly to customer
+        // Route each message through AgentCore Runtime and reply directly to customer
         for (const msg of value.messages) {
           // WhatsApp 'from' field omits the '+' prefix; normalise to E.164
           const rawFrom = msg.from ?? "";
@@ -411,7 +423,7 @@ async function handleWhatsAppRecord(record: SNSEventRecord): Promise<void> {
 
           // Seller commands go through WhatsApp self-chat → OpenClaw (linked device).
           // All messages to the WABA number (including from the seller) are routed
-          // to the Bedrock Agent as normal customer interactions.
+          // to the AgentCore Runtime as normal customer interactions.
 
           // Check if this is a survey rating reply (single digit 1-5)
           const trimmed = messageText.trim();
@@ -434,8 +446,8 @@ async function handleWhatsAppRecord(record: SNSEventRecord): Promise<void> {
               log("INFO", "Survey reply processed and response sent", { from: senderPhone, action: reviewResult.action });
               continue;
             }
-            // If review submission failed (e.g. no order found), fall through to Bedrock Agent
-            log("INFO", "Review submission failed, falling through to Bedrock Agent", { from: senderPhone });
+            // If review submission failed (e.g. no order found), fall through to AgentCore Runtime
+            log("INFO", "Review submission failed, falling through to AgentCore Runtime", { from: senderPhone });
           }
 
           // Per-sender rate limit check before calling Bedrock
@@ -448,7 +460,7 @@ async function handleWhatsAppRecord(record: SNSEventRecord): Promise<void> {
             continue;
           }
 
-          log("INFO", "Invoking Bedrock Agent", {
+          log("INFO", "Invoking AgentCore Runtime", {
             from: senderPhone,
             messageId: msg.id,
           });
@@ -459,10 +471,10 @@ async function handleWhatsAppRecord(record: SNSEventRecord): Promise<void> {
           // the Bedrock Guardrail and agent instruction are the primary defences.
           const safeInput = `[Customer WhatsApp message from ${senderPhone}]\n${messageText}`;
 
-          // Invoke Bedrock Agent and collect streaming reply
-          const replyText = await invokeBedrockAgent(senderPhone, safeInput);
+          // Invoke AgentCore Runtime and collect streaming reply
+          const replyText = await invokeAgentRuntime(senderPhone, safeInput);
 
-          log("INFO", "Bedrock Agent reply received", {
+          log("INFO", "AgentCore Runtime reply received", {
             from: senderPhone,
             replyLength: replyText.length,
           });
