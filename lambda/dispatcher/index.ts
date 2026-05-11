@@ -503,16 +503,9 @@ async function handleWhatsAppRecord(record: SNSEventRecord): Promise<void> {
 
       // ── Delivery / read receipts (statuses) ─────────────────────────────
       if (value.statuses && value.statuses.length > 0) {
-        log("INFO", "Routing WhatsApp delivery statuses", {
+        log("INFO", "WhatsApp delivery statuses received (no-op)", {
           count: value.statuses.length,
           phoneNumberId: value.metadata?.phone_number_id,
-        });
-
-        await postToGateway("/inbound/status", {
-          source: "whatsapp",
-          phoneNumberId: value.metadata?.phone_number_id,
-          displayPhoneNumber: value.metadata?.display_phone_number,
-          statuses: value.statuses,
         });
       }
 
