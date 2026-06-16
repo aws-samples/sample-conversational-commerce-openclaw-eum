@@ -1,4 +1,4 @@
-# Claw Boutique
+# sample-conversational-commerce-openclaw-eum
 
 OpenClaw-powered WhatsApp e-commerce bot built on AWS. Customers browse and order through a web storefront, then receive WhatsApp messages and emails for order confirmation, surveys, and refunds. The store owner manages everything through Telegram, where an AI agent (Claude on EKS) handles restock, refund, and order commands. The buyer-facing WhatsApp agent runs on Bedrock AgentCore Runtime using the Strands Agents SDK.
 
@@ -117,7 +117,7 @@ The seller opens the admin dashboard to see orders (now showing "refunded" statu
 ## Project structure
 
 ```
-claw-boutique/
+sample-conversational-commerce-openclaw-eum/
   agents/
     buyer-agent/          Strands Agent for WhatsApp (Python, deployed to AgentCore Runtime)
   cdk/                    CDK stack (EKS, RDS, VPC, Lambda, SNS, SES, S3, CloudFront, AgentCore)
@@ -154,7 +154,7 @@ claw-boutique/
 
 ```bash
 git clone <this-repo>
-cd claw-boutique
+cd sample-conversational-commerce-openclaw-eum
 
 # Copy the context template and fill in your values
 cp cdk/cdk.context.example.json cdk/cdk.context.json
@@ -212,6 +212,18 @@ kubectl exec deploy/openclaw -c openclaw -- printenv OPENCLAW_GATEWAY_TOKEN
 ```
 
 Paste the token into the Control UI settings (gear icon, top right). The token regenerates on every `cdk deploy`, so you need to grab it again after redeployments.
+
+---
+
+## Using this in Production
+
+This is sample code intended to demonstrate AWS services. Reasonable security steps have been taken (secrets in Secrets Manager, VPC-connected dispatcher, internal NLB, rate limiting, cdk-nag checks), but it has not been hardened for production use.
+
+It is critical that before you use any of this code in Production that you work with your own internal Security and Governance teams to get the appropriate Code and AppSec reviews for your organization.
+
+Although the code has been written with best practices in mind, your own company may require different ones, or have additional rules and restrictions.
+
+You take full ownership and responsibility for the code running in your environment, and are free to make whatever changes you need to.
 
 ---
 
