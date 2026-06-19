@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claw Boutique &mdash; Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50:  '#fffbeb',
+              100: '#fef3c7',
+              200: '#fde68a',
+              300: '#fcd34d',
+              400: '#fbbf24',
+              500: '#f59e0b',
+              600: '#d97706',
+              700: '#b45309',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .sidebar-link {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.625rem 1rem; border-radius: 0.5rem;
+      color: rgba(255,255,255,0.8); font-size: 0.875rem; font-weight: 600;
+      transition: all 0.15s ease; text-decoration: none;
+    }
+    .sidebar-link:hover { background: rgba(245,158,11,0.2); color: #fff; }
+    .sidebar-link.active { background: #f59e0b; color: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+    .tab-btn { padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; border-radius: 0.375rem; transition: all 0.15s ease; }
+    .tab-btn.active { background: #f59e0b; color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    .tab-btn:not(.active) { color: #475569; }
+    .tab-btn:not(.active):hover { background: #e2e8f0; }
+  </style>
+</head>
+<body class="h-full">
+
+<!-- Toast container -->
+<div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+<!-- Mobile header -->
+<div class="lg:hidden bg-slate-800 text-white flex items-center justify-between px-4 py-3 sticky top-0 z-30">
+  <div class="flex items-center gap-2">
+    <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+    <span class="font-semibold text-sm">Claw Boutique Admin</span>
+  </div>
+  <button id="mobile-menu-btn" class="p-1 rounded text-slate-300 hover:text-white">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+  </button>
+</div>
+
+<!-- Mobile nav overlay -->
+<div id="mobile-nav" class="hidden lg:hidden fixed inset-0 z-40 bg-black/50">
+  <div class="w-64 h-full bg-slate-800 flex flex-col">
+    <div class="flex items-center gap-2 px-5 py-5 border-b border-slate-700">
+      <svg class="w-7 h-7 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+      <div>
+        <div class="text-white font-bold text-sm leading-tight">Claw Boutique</div>
+        <div class="text-slate-400 text-xs">Admin Dashboard</div>
+      </div>
+    </div>
+    <nav class="flex-1 px-3 py-4 space-y-1" id="mobile-sidebar-nav"></nav>
+  </div>
+</div>
+
+<!-- Layout wrapper -->
+<div class="flex h-full min-h-screen">
+
+  <!-- Sidebar (desktop) -->
+  <aside class="hidden lg:flex lg:flex-col lg:w-60 xl:w-64 bg-slate-800 fixed inset-y-0 left-0 z-20">
+    <!-- Logo -->
+    <div class="flex items-center gap-3 px-5 py-5 border-b border-slate-700">
+      <div class="w-9 h-9 rounded-lg bg-amber-500 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+      </div>
+      <div>
+        <div class="text-white font-bold text-sm leading-tight">Claw Boutique</div>
+        <div class="text-slate-400 text-xs">Admin Dashboard</div>
+      </div>
+    </div>
+
+    <!-- Nav links -->
+    <nav class="flex-1 px-3 py-5 space-y-1" id="desktop-sidebar-nav"></nav>
+
+    <!-- Footer -->
+    <div class="px-4 py-4 border-t border-slate-700">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">CB</div>
+        <div class="min-w-0">
+          <div class="text-slate-200 text-xs font-medium truncate">Store Owner</div>
+          <div class="text-slate-500 text-xs truncate">admin@clawboutique.com</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="flex-1 lg:ml-60 xl:ml-64 min-h-screen flex flex-col">
+
+    <!-- Page header -->
+    <header class="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 lg:top-0 z-10">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 id="page-title" class="text-lg font-semibold text-slate-800">Dashboard</h1>
+          <p id="page-subtitle" class="text-xs text-slate-500 mt-0.5">Overview of your store</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <div id="last-updated" class="text-xs text-slate-400 hidden sm:block"></div>
+          <button id="refresh-btn" title="Refresh" class="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+            <svg id="refresh-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Sections -->
+    <div class="flex-1 p-4 sm:p-6">
+
+      <!-- ============================================================ -->
+      <!-- SECTION: Dashboard -->
+      <!-- ============================================================ -->
+      <section id="section-dashboard" class="section-panel">
+
+        <!-- Stats grid -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Orders</span>
+              <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+              </div>
+            </div>
+            <div id="stat-total-orders" class="text-2xl font-bold text-slate-800">—</div>
+            <div class="text-xs text-slate-400 mt-1">All time</div>
+          </div>
+
+          <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Pending</span>
+              <div class="w-8 h-8 rounded-lg bg-yellow-50 flex items-center justify-center">
+                <svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+            </div>
+            <div id="stat-pending-orders" class="text-2xl font-bold text-slate-800">—</div>
+            <div class="text-xs text-slate-400 mt-1">Awaiting action</div>
+          </div>
+
+          <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Revenue</span>
+              <div class="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
+                <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+            </div>
+            <div id="stat-revenue" class="text-2xl font-bold text-slate-800">—</div>
+            <div class="text-xs text-slate-400 mt-1">Total earnings</div>
+          </div>
+
+          <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Escalations</span>
+              <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
+                <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+              </div>
+            </div>
+            <div id="stat-escalations" class="text-2xl font-bold text-slate-800">—</div>
+            <div class="text-xs text-slate-400 mt-1">Unresolved</div>
+          </div>
+        </div>
+
+        <!-- Recent orders + escalations grid -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+
+          <!-- Recent orders (takes 2 cols) -->
+          <div class="xl:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h2 class="text-sm font-semibold text-slate-700">Recent Orders</h2>
+              <button onclick="AdminApp.navigate('orders')" class="text-xs text-amber-600 hover:text-amber-700 font-medium">View all</button>
+            </div>
+            <div id="recent-orders-list" class="divide-y divide-slate-100">
+              <div class="px-5 py-8 text-center text-slate-400 text-sm">Loading...</div>
+            </div>
+          </div>
+
+          <!-- Recent escalations -->
+          <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h2 class="text-sm font-semibold text-slate-700">Open Escalations</h2>
+              <button onclick="AdminApp.navigate('escalations')" class="text-xs text-amber-600 hover:text-amber-700 font-medium">View all</button>
+            </div>
+            <div id="recent-escalations-list" class="divide-y divide-slate-100">
+              <div class="px-5 py-8 text-center text-slate-400 text-sm">Loading...</div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- SECTION: Orders -->
+      <!-- ============================================================ -->
+      <section id="section-orders" class="section-panel hidden">
+
+        <!-- Filter tabs -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm mb-4 p-3">
+          <div id="order-filter-tabs" class="flex flex-wrap gap-2">
+            <button class="tab-btn active" data-status="all">All</button>
+            <button class="tab-btn" data-status="pending">Pending</button>
+            <button class="tab-btn" data-status="confirmed">Confirmed</button>
+            <button class="tab-btn" data-status="processing">Processing</button>
+            <button class="tab-btn" data-status="shipped">Shipped</button>
+            <button class="tab-btn" data-status="delivered">Delivered</button>
+            <button class="tab-btn" data-status="cancelled">Cancelled</button>
+          </div>
+        </div>
+
+        <div class="flex gap-4">
+          <!-- Orders table -->
+          <div id="orders-table-wrapper" class="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Order ID</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Customer</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden md:table-cell">Date</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Total</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden lg:table-cell">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="orders-table-body" class="divide-y divide-slate-100">
+                  <tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">Loading orders...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Order detail panel -->
+          <div id="order-detail-panel" class="hidden w-80 xl:w-96 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex-shrink-0 self-start sticky top-20">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h3 class="text-sm font-semibold text-slate-700">Order Detail</h3>
+              <button id="close-order-detail" class="text-slate-400 hover:text-slate-600">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div id="order-detail-content" class="p-5 space-y-4 max-h-[80vh] overflow-y-auto"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- SECTION: Escalations -->
+      <!-- ============================================================ -->
+      <section id="section-escalations" class="section-panel hidden">
+        <div id="escalations-list" class="space-y-4">
+          <div class="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-400 text-sm">Loading escalations...</div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- SECTION: Products -->
+      <!-- ============================================================ -->
+      <section id="section-products" class="section-panel hidden">
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+            <h2 class="text-sm font-semibold text-slate-700">Product Catalog</h2>
+            <span id="products-count" class="text-xs text-slate-400"></span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Name</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden md:table-cell">Category</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden lg:table-cell">Size</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden lg:table-cell">Color</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Price</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Stock</th>
+                </tr>
+              </thead>
+              <tbody id="products-table-body" class="divide-y divide-slate-100">
+                <tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">Loading products...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- SECTION: Memory -->
+      <!-- ============================================================ -->
+      <section id="section-memory" class="section-panel hidden">
+        <div class="flex items-center justify-between mb-4">
+          <div></div>
+          <button id="add-memory-btn" class="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Add Memory
+          </button>
+        </div>
+        <div id="memory-list" class="space-y-3">
+          <div class="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-400 text-sm">Loading memories...</div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- SECTION: AI Insights -->
+      <!-- ============================================================ -->
+      <section id="section-insights" class="section-panel hidden">
+        <div id="insights-content" class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+          <div class="text-center py-8 text-slate-400 text-sm">Loading insights...</div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- ================================================================ -->
+<!-- MODAL: Resolve Escalation -->
+<!-- ================================================================ -->
+<div id="resolve-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+    <div class="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+      <h3 class="text-base font-semibold text-slate-800">Resolve Escalation</h3>
+      <button id="close-resolve-modal" class="text-slate-400 hover:text-slate-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="px-6 py-5 space-y-4">
+      <div id="resolve-modal-context" class="p-3 bg-slate-50 rounded-lg text-sm text-slate-600 border border-slate-200"></div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Action Taken</label>
+        <select id="resolve-action" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent">
+          <option value="refund_issued">Refund issued</option>
+          <option value="replacement_shipped">Replacement shipped</option>
+          <option value="resolved_via_chat">Issue resolved via chat</option>
+          <option value="no_action_needed">No action needed</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Resolution Notes</label>
+        <textarea id="resolve-notes" rows="3" placeholder="Optional notes about how this was resolved..." class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent resize-none"></textarea>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 px-6 py-4 border-t border-slate-100">
+      <button id="cancel-resolve-modal" class="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+      <button id="confirm-resolve-btn" class="px-5 py-2 text-sm font-semibold bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-sm">Mark Resolved</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- MODAL: Ship Order (tracking URL) -->
+<!-- ================================================================ -->
+<div id="ship-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+    <div class="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+      <h3 class="text-base font-semibold text-slate-800">Mark as Shipped</h3>
+      <button id="close-ship-modal" class="text-slate-400 hover:text-slate-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="px-6 py-5 space-y-4">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Tracking URL <span class="text-red-400">*</span></label>
+        <input id="tracking-url-input" type="url" placeholder="https://tracking.carrier.com/..." class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+        <p id="tracking-url-error" class="text-xs text-red-500 mt-1 hidden">Please enter a valid tracking URL.</p>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 px-6 py-4 border-t border-slate-100">
+      <button id="cancel-ship-modal" class="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+      <button id="confirm-ship-btn" class="px-5 py-2 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-sm">Confirm Shipment</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- MODAL: Add Memory -->
+<!-- ================================================================ -->
+<div id="add-memory-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+    <div class="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+      <h3 class="text-base font-semibold text-slate-800">Add Memory</h3>
+      <button id="close-memory-modal" class="text-slate-400 hover:text-slate-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="px-6 py-5 space-y-4">
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Customer Phone</label>
+          <input id="mem-phone" type="text" placeholder="+1 555 000 0000" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Type</label>
+          <input id="mem-type" type="text" placeholder="e.g. preference, complaint" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Summary</label>
+        <textarea id="mem-summary" rows="2" placeholder="What happened?" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent resize-none"></textarea>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Resolution</label>
+        <textarea id="mem-resolution" rows="2" placeholder="How was it resolved?" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent resize-none"></textarea>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Tags <span class="text-slate-400 font-normal">(comma separated)</span></label>
+        <input id="mem-tags" type="text" placeholder="size, refund, shipping" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 px-6 py-4 border-t border-slate-100">
+      <button id="cancel-memory-modal" class="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+      <button id="confirm-memory-btn" class="px-5 py-2 text-sm font-semibold bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors shadow-sm">Save Memory</button>
+    </div>
+  </div>
+</div>
+
+<script src="./config.js"></script>
+<script src="./js/admin.js"></script>
+</body>
+</html>

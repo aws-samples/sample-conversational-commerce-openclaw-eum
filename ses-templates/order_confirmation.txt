@@ -1,0 +1,65 @@
+========================================
+  CLAW BOUTIQUE
+  Curated Vintage & Unique Finds
+========================================
+
+ORDER CONFIRMED
+
+Dear {{customer_name}},
+
+Thank you for your order — we're so glad you found something
+special. Your purchase has been received and is being carefully
+prepared for shipment.
+
+----------------------------------------
+ORDER DETAILS
+----------------------------------------
+
+Order Number:  {{order_id}}
+Order Date:    {{order_date}}
+Status:        Confirmed
+
+----------------------------------------
+ORDER SUMMARY
+----------------------------------------
+
+{{items_list}}
+
+----------------------------------------
+ORDER TOTAL:   {{total}}
+----------------------------------------
+
+ESTIMATED SHIPPING
+------------------
+Your order is expected to ship within 2-3 business days.
+Once dispatched, you will receive a separate shipping confirmation
+email with your tracking link.
+
+Track your order at any time:
+https://clawboutique.com/orders/{{order_id}}
+
+----------------------------------------
+
+If you have any questions about your order, reply to this email
+or contact us at:
+
+  Email:   support@clawboutique.com
+  Website: https://clawboutique.com
+
+With gratitude,
+The Claw Boutique Team
+
+========================================
+  Claw Boutique
+  123 Vintage Lane, Suite 4
+  Los Angeles, CA 90012
+  https://clawboutique.com
+========================================
+
+You received this email because you placed an order with
+Claw Boutique. Transactional order emails cannot be unsubscribed.
+
+To unsubscribe from marketing emails, visit:
+https://clawboutique.com/unsubscribe?email={{customer_email}}&token={{unsubscribe_token}}
+
+Privacy Policy: https://clawboutique.com/privacy

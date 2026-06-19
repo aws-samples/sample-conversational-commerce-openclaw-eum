@@ -1,0 +1,68 @@
+========================================
+  CLAW BOUTIQUE
+  Curated Vintage & Unique Finds
+========================================
+
+YOUR ORDER IS ON ITS WAY
+
+Dear {{customer_name}},
+
+Great news — your Claw Boutique order has left our hands and is
+now with your carrier. Use the tracking information below to
+follow its journey to you.
+
+----------------------------------------
+SHIPMENT DETAILS
+----------------------------------------
+
+Order Number:       {{order_id}}
+Carrier:            {{carrier}}
+Estimated Delivery: {{estimated_delivery}}
+
+----------------------------------------
+TRACK YOUR PACKAGE
+----------------------------------------
+
+  {{tracking_url}}
+
+Copy and paste the link above into your browser to get
+real-time updates on your delivery.
+
+----------------------------------------
+DELIVERY TIMELINE
+----------------------------------------
+
+  [x] Order Placed
+  [x] Shipped — Picked up by {{carrier}}
+  [ ] Delivered — Expected {{estimated_delivery}}
+
+----------------------------------------
+
+If your package hasn't arrived by {{estimated_delivery}},
+or if you have any questions, please contact us at:
+
+  Email:          support@clawboutique.com
+  Order Status:   https://clawboutique.com/orders/{{order_id}}
+  Website:        https://clawboutique.com
+
+Include your order number ({{order_id}}) in any correspondence
+so we can assist you quickly.
+
+We hope you love your new treasure,
+The Claw Boutique Team
+
+========================================
+  Claw Boutique
+  123 Vintage Lane, Suite 4
+  Los Angeles, CA 90012
+  https://clawboutique.com
+========================================
+
+You received this email because you placed an order with
+Claw Boutique. Transactional shipping emails cannot be
+unsubscribed.
+
+To unsubscribe from marketing emails, visit:
+https://clawboutique.com/unsubscribe?email={{customer_email}}&token={{unsubscribe_token}}
+
+Privacy Policy: https://clawboutique.com/privacy

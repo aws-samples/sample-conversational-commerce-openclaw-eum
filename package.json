@@ -1,0 +1,19 @@
+{
+  "name": "claw-boutique",
+  "version": "1.0.0",
+  "description": "AI-powered WhatsApp e-commerce bot built on AWS. Customers text a WhatsApp number to browse products, place orders, and get support. A Bedrock Agent (Nova Lite) handles conversations in real time. OpenClaw runs on EKS as the intelligence layer: it processes admin email replies, compacts interaction history, builds customer memory, and generates daily AI insights using Claude on Bedrock.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
+  }
+}

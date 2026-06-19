@@ -1,0 +1,78 @@
+{
+  "_comment": [
+    "Sample SNS event for testing the Lambda dispatcher via the AWS Console Test tab.",
+    "Simulates an End User Messaging Social (WhatsApp) inbound text message.",
+    "",
+    "Double-encoding explanation:",
+    "  AWS End User Messaging Social wraps the WhatsApp webhook payload in a",
+    "  second JSON serialisation before publishing to SNS.  The structure is:",
+    "",
+    "    SNS.Message = JSON.stringify({",
+    "      whatsAppWebhookEntry: JSON.stringify(actualWhatsAppPayload)",
+    "    })",
+    "",
+    "  The dispatcher must therefore call JSON.parse() twice:",
+    "    1. Parse SNS.Message to get the outer envelope object.",
+    "    2. Parse outerEnvelope.whatsAppWebhookEntry to get the WhatsApp payload.",
+    "",
+    "How to use:",
+    "  1. Open the Lambda function ClawBoutiqueDispatcher in the AWS Console.",
+    "  2. Click 'Test' → 'Create new event'.",
+    "  3. Paste this entire JSON object as the test event body.",
+    "  4. Click 'Test' and inspect the CloudWatch log output.",
+    "",
+    "The inner whatsAppWebhookEntry (decoded for readability):",
+    "  {",
+    "    \"object\": \"whatsapp_business_account\",",
+    "    \"entry\": [{",
+    "      \"id\": \"WBA_ID_001\",",
+    "      \"changes\": [{",
+    "        \"field\": \"messages\",",
+    "        \"value\": {",
+    "          \"messaging_product\": \"whatsapp\",",
+    "          \"metadata\": {",
+    "            \"display_phone_number\": \"+639171234567\",",
+    "            \"phone_number_id\": \"PN_ID_CLAWBOUTIQUE\"",
+    "          },",
+    "          \"contacts\": [{",
+    "            \"profile\": { \"name\": \"Maria Santos\" },",
+    "            \"wa_id\": \"639181234567\"",
+    "          }],",
+    "          \"messages\": [{",
+    "            \"id\": \"wamid.HBgLNjM5MTgxMjM0NTY3FQIAEhggABC123XYZ\",",
+    "            \"from\": \"639181234567\",",
+    "            \"timestamp\": \"1717243200\",",
+    "            \"type\": \"text\",",
+    "            \"text\": { \"body\": \"Hi! Do you still have the black crop top in size S?\" }",
+    "          }]",
+    "        }",
+    "      }]",
+    "    }]",
+    "  }"
+  ],
+  "Records": [
+    {
+      "EventVersion": "1.0",
+      "EventSubscriptionArn": "arn:aws:sns:ap-southeast-1:123456789012:ClawBoutiqueInbound:sub-uuid-whatsapp-001",
+      "EventSource": "aws:sns",
+      "Sns": {
+        "SignatureVersion": "1",
+        "Timestamp": "2024-06-01T12:00:00.000Z",
+        "Signature": "EXAMPLE-SIGNATURE==",
+        "SigningCertUrl": "https://sns.ap-southeast-1.amazonaws.com/SimpleNotificationService-cert.pem",
+        "MessageId": "sns-msg-uuid-whatsapp-inbound-001",
+        "Message": "{\"whatsAppWebhookEntry\":\"{\\\"object\\\":\\\"whatsapp_business_account\\\",\\\"entry\\\":[{\\\"id\\\":\\\"WBA_ID_001\\\",\\\"changes\\\":[{\\\"value\\\":{\\\"messaging_product\\\":\\\"whatsapp\\\",\\\"metadata\\\":{\\\"display_phone_number\\\":\\\"+639171234567\\\",\\\"phone_number_id\\\":\\\"PN_ID_CLAWBOUTIQUE\\\"},\\\"contacts\\\":[{\\\"profile\\\":{\\\"name\\\":\\\"Maria Santos\\\"},\\\"wa_id\\\":\\\"639181234567\\\"}],\\\"messages\\\":[{\\\"id\\\":\\\"wamid.HBgLNjM5MTgxMjM0NTY3FQIAEhggABC123XYZ\\\",\\\"from\\\":\\\"639181234567\\\",\\\"timestamp\\\":\\\"1717243200\\\",\\\"type\\\":\\\"text\\\",\\\"text\\\":{\\\"body\\\":\\\"Hi! Do you still have the black crop top in size S?\\\"}}]},\\\"field\\\":\\\"messages\\\"}]}]}\"}",
+        "Subject": "WhatsAppWebhookEvent",
+        "Type": "Notification",
+        "UnsubscribeUrl": "https://sns.ap-southeast-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:ap-southeast-1:123456789012:ClawBoutiqueInbound:sub-uuid-whatsapp-001",
+        "TopicArn": "arn:aws:sns:ap-southeast-1:123456789012:ClawBoutiqueInbound",
+        "MessageAttributes": {
+          "eventType": {
+            "Type": "String",
+            "Value": "WhatsAppWebhookEvent"
+          }
+        }
+      }
+    }
+  ]
+}

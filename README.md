@@ -1,0 +1,259 @@
+# sample-conversational-commerce-openclaw-eum
+
+OpenClaw-powered WhatsApp e-commerce bot built on AWS. Customers browse and order through a web storefront, then receive WhatsApp messages and emails for order confirmation, surveys, and refunds. The store owner manages everything through Telegram, where an AI agent (Claude on EKS) handles restock, refund, and order commands. The buyer-facing WhatsApp agent runs on Bedrock AgentCore Runtime using the Strands Agents SDK.
+
+![Architecture](docs/architecture.drawio.png)
+
+## How it works
+
+Two AI models, two channels:
+
+- **Customer channel (WhatsApp)** -- A Strands Agent (Nova Lite) runs on Bedrock AgentCore Runtime with AgentCore Memory for session continuity. Customer messages arrive via End User Messaging Social, route through SNS to a Dispatcher Lambda, and get processed by the agent. Fast and cheap for high-volume tool-calling.
+- **Seller channel (Telegram)** -- OpenClaw runs Claude on EKS. The store owner receives stock alerts, review escalations, and order notifications on Telegram. They reply with commands like "restock", "apologize", or "ship order 42", and ClawBot executes them.
+- **Web storefront** -- CloudFront serves a static site from S3. Checkout calls the Store API through API Gateway.
+
+All three channels share the same Store API Lambda and RDS MySQL database.
+
+### Services used
+
+| Service | Role |
+|---------|------|
+| End User Messaging Social | Managed WhatsApp Business integration |
+| Telegram Bot API | Seller notification and command channel |
+| SNS | Event bus for inbound WhatsApp messages |
+| Lambda (Dispatcher) | Routes WhatsApp events to AgentCore Runtime |
+| Lambda (Store API) | Flask REST API for orders, products, reviews, escalations |
+| Bedrock AgentCore Runtime | Hosts the Strands Agent container (Nova Lite) for customer chat |
+| Bedrock AgentCore Memory | Conversation history per customer phone number |
+| EKS | Hosts OpenClaw gateway (Claude) for the seller Telegram channel |
+| RDS MySQL | Products, customers, orders, reviews, escalations |
+| SES | Order confirmation, shipping, and refund emails |
+| CloudFront + S3 | Static web storefront and admin dashboard |
+| API Gateway | REST endpoint for the Store API |
+| NLB | Exposes OpenClaw on EKS to the Dispatcher Lambda |
+| Secrets Manager | Database credentials |
+
+---
+
+## Demo walkthrough
+
+A single order touches the web storefront, WhatsApp, email, Telegram, and the admin dashboard. Here is the full flow.
+
+### Step 1: Place an order
+
+Open the storefront, add an item to cart, fill in your name, email, and phone number, and click Place Order.
+
+![Storefront](docs/screenshot-storefront.png)
+
+![Checkout](docs/screenshot-checkout.png)
+
+### Step 2: Receive order confirmation
+
+Two things happen immediately:
+
+- **WhatsApp** -- The customer gets a confirmation message with the order number, items, and total, followed by a feedback survey ("rate 1-5").
+- **Email** -- A confirmation email arrives via SES with the same order details.
+
+<img src="docs/mockup-email-confirmation.png" width="560" alt="Order confirmation email">
+
+<img src="docs/mockup-wa-survey.png" width="380" alt="WhatsApp confirmation and survey">
+
+### Step 3: Low stock alert on Telegram
+
+Every purchase triggers a stock check. If any item drops below threshold (out of stock, fewer than 5 units, or projected to run out within 7 days), the seller gets a Telegram alert with stock levels and sell rates.
+
+The seller can reply `restock <product>` to add inventory. ClawBot runs the restock tool and confirms the new total.
+
+<img src="docs/mockup-tg-stock.png" width="380" alt="Telegram stock alert">
+
+### Step 4: Customer gives negative feedback
+
+The customer replies "1" to the WhatsApp survey. The Store API creates an escalation record and sends the seller a Telegram review alert with the customer's name, phone, rating, and review text.
+
+<img src="docs/mockup-tg-escalation.png" width="380" alt="Telegram review escalation">
+
+### Step 5: Seller sends refund via Telegram
+
+The seller replies `apologize` on Telegram. ClawBot looks up the unresolved escalation, then:
+
+1. Sends a WhatsApp apology message to the customer
+2. Sends a refund confirmation email to the customer via SES
+3. Marks the order as "refunded" in the database
+4. Resolves the escalation
+
+If there are multiple open escalations, ClawBot lists them and asks which one.
+
+### Step 6: Check the admin dashboard
+
+The seller opens the admin dashboard to see orders (now showing "refunded" status), escalation history, stock levels, and products.
+
+![Admin Dashboard](docs/screenshot-admin-dashboard.png)
+
+![Admin Orders](docs/screenshot-admin-orders.png)
+
+---
+
+## Other features
+
+**Order via WhatsApp** -- Customers can browse and order by texting the WhatsApp business number directly. The Strands Agent on AgentCore handles the full conversation.
+
+<img src="docs/mockup-wa-order.png" width="380" alt="WhatsApp order conversation">
+
+**Telegram seller commands** -- The store owner can manage the shop entirely from Telegram:
+
+| Command | What it does |
+|---------|-------------|
+| `restock <product>` | Add 1 unit to inventory (or specify qty) |
+| `apologize` | Send WhatsApp apology + refund email, resolve escalation |
+| `stock report` | Get current inventory levels |
+| `orders` | List recent or pending orders |
+
+**AI Insights** -- OpenClaw generates periodic business insights based on order patterns and customer feedback, visible on the admin dashboard.
+
+![AI Insights](docs/screenshot-admin-insights.png)
+
+---
+
+## Project structure
+
+```
+sample-conversational-commerce-openclaw-eum/
+  agents/
+    buyer-agent/          Strands Agent for WhatsApp (Python, deployed to AgentCore Runtime)
+  cdk/                    CDK stack (EKS, RDS, VPC, Lambda, SNS, SES, S3, CloudFront, AgentCore)
+  docker/openclaw/        Dockerfile for OpenClaw container (built by CDK, pushed to ECR)
+  lambda/
+    dispatcher/           SNS event router (TypeScript)
+    store-api/            Flask REST API (Python)
+    db-initializer/       Custom resource Lambda for schema + seed data
+  openclaw/
+    openclaw.json         Agent config (model, tools, channels)
+    tools/                Python tool scripts called by OpenClaw (restock, apologize, etc.)
+  web/static/
+    index.html            Storefront
+    admin.html            Admin dashboard
+    js/store.js           Storefront logic
+    js/admin.js           Admin dashboard logic
+  docs/                   Architecture diagram, mockups, screenshots
+```
+
+---
+
+## Working with an AI Coding Assistant
+
+If you are using an AI coding assistant (such as [Kiro](https://kiro.dev) or [Claude Code](https://claude.ai/code)) to deploy or extend this project, start here.
+
+### Recommended setup
+
+Three tools significantly reduce trial-and-error for this deployment.
+
+**1. AWS MCP server** — Install the [AWS MCP server](https://docs.aws.amazon.com/agent-toolkit/latest/userguide/mcp-server.html) before starting. It gives your AI assistant live access to 15,000+ AWS API operations, current AWS documentation, and sandboxed Python execution — all authenticated via your existing IAM credentials.
+
+```bash
+claude mcp add-json aws-mcp --scope user \
+'{"command":"uvx","args":["mcp-proxy-for-aws==1.6.0","https://aws-mcp.us-east-1.api.aws/mcp","--metadata","AWS_REGION=us-east-1"]}'
+```
+
+**2. Amazon SES agent skills** — Install the Mail Manager skill for curated, service-team-maintained guidance on correct resource creation order and condition syntax:
+
+```bash
+npx skills add amazon-ses/skills --skill aws-mail-manager
+```
+
+See [readme_agentic_deployment.md](readme_agentic_deployment.md) for the full step-by-step agentic deployment guide.
+
+**3. AGENTS.md** — Read `AGENTS.md` first. It is the machine-readable reference for this project and contains correct API syntax, resource dependency order, IAM patterns, and known pitfalls for Amazon SES Mail Manager.
+
+---
+
+## Deployment
+
+### Prerequisites
+
+- AWS CLI configured with credentials
+- Node.js 18+
+- Docker (or Finch) running
+- A Telegram bot token (from @BotFather)
+- A WhatsApp Business Account linked to AWS End User Messaging Social
+- A verified SES email address
+
+### Deploy
+
+```bash
+git clone <this-repo>
+cd sample-conversational-commerce-openclaw-eum
+
+# Copy the context template and fill in your values
+cp cdk/cdk.context.example.json cdk/cdk.context.json
+# Edit cdk/cdk.context.json with your Telegram bot token, seller chat ID,
+# WhatsApp phone number ID, WABA ID, and SES sender email
+
+cd cdk && npm install
+npx cdk bootstrap
+npx cdk deploy
+```
+
+**Security note:** Store sensitive values (Telegram bot token, WhatsApp IDs) in `cdk/cdk.context.json`, which is gitignored. Do not pass tokens as `-c` CLI flags -- they are visible in shell history and process listings. For CI/CD pipelines, use AWS Secrets Manager or AWS Systems Manager Parameter Store instead.
+
+CDK handles database initialization (schema + seed data), Docker image build, ECR push, and EKS deployment automatically. A first-time deploy takes about 25-30 minutes (EKS cluster creation dominates).
+
+### Destroy
+
+```bash
+cd cdk && npx cdk destroy
+```
+
+No context values needed for destroy.
+
+### Post-deploy setup (one-time)
+
+1. **WhatsApp** -- CDK automatically links your WABA to the SNS topic. No manual step needed.
+2. **Telegram** -- Send `/start` to the bot from the seller's Telegram account.
+3. **SES** -- Verify your sender email address in the SES console.
+
+Steps 2 and 3 only need to be done once per account. Subsequent deploys reuse existing config.
+
+### Connecting to OpenClaw on EKS
+
+After deploy, CDK prints a `ClawBoutiqueClusterConfigCommand` output with the `aws eks update-kubeconfig` command. Copy and run it to configure kubectl.
+
+Then check the pod and view logs:
+
+```bash
+kubectl get pods -n default -l app=openclaw       # Check pod status
+kubectl logs -n default -l app=openclaw --tail=50  # View logs
+```
+
+### OpenClaw Control UI
+
+The Control UI requires a secure context (HTTPS or localhost). Use kubectl port-forward to access it locally:
+
+```bash
+kubectl port-forward svc/openclaw 18789:80
+```
+
+Open `http://localhost:18789` in your browser. The UI requires a gateway token for authentication. Get it from the running pod:
+
+```bash
+kubectl exec deploy/openclaw -c openclaw -- printenv OPENCLAW_GATEWAY_TOKEN
+```
+
+Paste the token into the Control UI settings (gear icon, top right). The token regenerates on every `cdk deploy`, so you need to grab it again after redeployments.
+
+---
+
+## Using this in Production
+
+This is sample code intended to demonstrate AWS services. Reasonable security steps have been taken (secrets in Secrets Manager, VPC-connected dispatcher, internal NLB, rate limiting, cdk-nag checks), but it has not been hardened for production use.
+
+It is critical that before you use any of this code in Production that you work with your own internal Security and Governance teams to get the appropriate Code and AppSec reviews for your organization.
+
+Although the code has been written with best practices in mind, your own company may require different ones, or have additional rules and restrictions.
+
+You take full ownership and responsibility for the code running in your environment, and are free to make whatever changes you need to.
+
+---
+
+## License
+
+MIT

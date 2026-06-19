@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
+  <!--[if mso]>
+  <xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml>
+  <![endif]-->
+  <title>Order Confirmation - Claw Boutique</title>
+  <style>
+    /* Base Reset */
+    * { box-sizing: border-box; }
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+    body { margin: 0; padding: 0; width: 100% !important; min-width: 100%; background-color: #f5f0eb; }
+
+    /* Typography */
+    body, .email-body { font-family: 'Georgia', 'Times New Roman', serif; }
+    .sans { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+
+    /* Layout */
+    .email-wrapper { width: 100%; background-color: #f5f0eb; padding: 40px 20px; }
+    .email-content { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 4px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+
+    /* Header */
+    .header { background-color: #2c1a0e; padding: 36px 40px; text-align: center; }
+    .logo-text { font-family: 'Georgia', serif; font-size: 28px; font-weight: normal; color: #e8d5b7; letter-spacing: 4px; text-transform: uppercase; margin: 0; }
+    .logo-tagline { font-family: 'Helvetica Neue', sans-serif; font-size: 11px; color: #a08060; letter-spacing: 3px; text-transform: uppercase; margin: 6px 0 0 0; }
+
+    /* Hero Band */
+    .hero-band { background-color: #c9a96e; padding: 20px 40px; text-align: center; }
+    .hero-band h1 { font-family: 'Georgia', serif; font-size: 22px; font-weight: normal; color: #2c1a0e; margin: 0; letter-spacing: 1px; }
+
+    /* Body */
+    .body-section { padding: 36px 40px; }
+    .greeting { font-size: 16px; color: #2c1a0e; margin: 0 0 16px 0; line-height: 1.5; }
+    p { font-size: 15px; color: #4a3728; line-height: 1.7; margin: 0 0 16px 0; }
+
+    /* Order Meta */
+    .order-meta { background-color: #faf7f3; border: 1px solid #e8d5b7; border-radius: 4px; padding: 20px 24px; margin: 24px 0; }
+    .order-meta-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f0e8dc; font-family: 'Helvetica Neue', sans-serif; font-size: 13px; }
+    .order-meta-row:last-child { border-bottom: none; }
+    .meta-label { color: #8c6d55; text-transform: uppercase; letter-spacing: 0.5px; font-size: 11px; padding-top: 2px; }
+    .meta-value { color: #2c1a0e; font-weight: 600; }
+
+    /* Divider */
+    .divider { border: none; border-top: 1px solid #e8d5b7; margin: 28px 0; }
+
+    /* Items Table */
+    .items-header { font-family: 'Helvetica Neue', sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #8c6d55; padding-bottom: 10px; border-bottom: 2px solid #c9a96e; }
+    .items-table { width: 100%; border-collapse: collapse; }
+    .items-table th { font-family: 'Helvetica Neue', sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #8c6d55; padding: 0 0 12px 0; text-align: left; border-bottom: 1px solid #e8d5b7; }
+    .items-table th.right { text-align: right; }
+    .items-table td { padding: 14px 0; border-bottom: 1px solid #f0e8dc; vertical-align: top; }
+    .items-table td.right { text-align: right; }
+    .item-name { font-family: 'Georgia', serif; font-size: 15px; color: #2c1a0e; line-height: 1.4; }
+    .item-detail { font-family: 'Helvetica Neue', sans-serif; font-size: 12px; color: #8c6d55; margin-top: 3px; }
+    .item-price { font-family: 'Helvetica Neue', sans-serif; font-size: 14px; color: #4a3728; font-weight: 500; white-space: nowrap; }
+
+    /* Total Row */
+    .total-row td { padding: 16px 0 4px 0; border-bottom: none; }
+    .total-label { font-family: 'Helvetica Neue', sans-serif; font-size: 13px; text-transform: uppercase; letter-spacing: 0.8px; color: #4a3728; font-weight: 600; }
+    .total-amount { font-family: 'Georgia', serif; font-size: 20px; color: #2c1a0e; font-weight: normal; text-align: right; }
+
+    /* Shipping Box */
+    .shipping-box { background-color: #f5f0eb; border-left: 3px solid #c9a96e; padding: 18px 20px; margin: 28px 0; border-radius: 0 4px 4px 0; }
+    .shipping-box .box-title { font-family: 'Helvetica Neue', sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #8c6d55; margin: 0 0 8px 0; }
+    .shipping-box p { margin: 0; font-size: 14px; color: #4a3728; }
+
+    /* CTA Button */
+    .cta-wrapper { text-align: center; margin: 32px 0; }
+    .cta-button { display: inline-block; background-color: #2c1a0e; color: #e8d5b7 !important; font-family: 'Helvetica Neue', sans-serif; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; text-decoration: none; padding: 14px 36px; border-radius: 2px; }
+    .cta-button:hover { background-color: #4a3728; }
+
+    /* Footer */
+    .footer { background-color: #2c1a0e; padding: 28px 40px; text-align: center; }
+    .footer p { font-family: 'Helvetica Neue', sans-serif; font-size: 12px; color: #8c6d55; margin: 0 0 8px 0; line-height: 1.6; }
+    .footer a { color: #c9a96e; text-decoration: none; }
+    .footer .social-links { margin: 12px 0; }
+    .footer .social-links a { display: inline-block; margin: 0 8px; font-size: 12px; color: #a08060; text-decoration: none; letter-spacing: 0.5px; }
+
+    /* Responsive */
+    @media only screen and (max-width: 620px) {
+      .email-wrapper { padding: 20px 10px !important; }
+      .body-section { padding: 28px 24px !important; }
+      .header { padding: 28px 24px !important; }
+      .hero-band { padding: 16px 24px !important; }
+      .footer { padding: 24px 20px !important; }
+      .logo-text { font-size: 22px !important; }
+      .items-table td { display: block; }
+      .items-table td.right { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+<div class="email-wrapper">
+  <table class="email-content" width="600" cellpadding="0" cellspacing="0" role="presentation" style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:4px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+    <!-- Header / Logo -->
+    <tr>
+      <td class="header" style="background-color:#2c1a0e;padding:36px 40px;text-align:center;">
+        <!-- Replace with <img> tag when logo asset is available -->
+        <!-- <img src="https://assets.clawboutique.com/logo-light.png" alt="Claw Boutique" width="160" style="display:block;margin:0 auto;"> -->
+        <p class="logo-text" style="font-family:'Georgia',serif;font-size:28px;font-weight:normal;color:#e8d5b7;letter-spacing:4px;text-transform:uppercase;margin:0;">CLAW BOUTIQUE</p>
+        <p class="logo-tagline" style="font-family:'Helvetica Neue',sans-serif;font-size:11px;color:#a08060;letter-spacing:3px;text-transform:uppercase;margin:6px 0 0 0;">Curated Vintage &amp; Unique Finds</p>
+      </td>
+    </tr>
+
+    <!-- Hero Band -->
+    <tr>
+      <td style="background-color:#c9a96e;padding:20px 40px;text-align:center;">
+        <h1 style="font-family:'Georgia',serif;font-size:22px;font-weight:normal;color:#2c1a0e;margin:0;letter-spacing:1px;">Order Confirmed</h1>
+      </td>
+    </tr>
+
+    <!-- Body -->
+    <tr>
+      <td class="body-section" style="padding:36px 40px;">
+
+        <p class="greeting" style="font-size:16px;color:#2c1a0e;margin:0 0 16px 0;line-height:1.5;">Dear {{customer_name}},</p>
+        <p style="font-size:15px;color:#4a3728;line-height:1.7;margin:0 0 16px 0;">
+          Thank you for your order — we're so glad you found something special. Your purchase has been received and is being carefully prepared for shipment.
+        </p>
+
+        <!-- Order Meta -->
+        <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color:#faf7f3;border:1px solid #e8d5b7;border-radius:4px;margin:24px 0;">
+          <tr>
+            <td style="padding:20px 24px;">
+              <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+                <tr>
+                  <td style="padding:6px 0;border-bottom:1px solid #f0e8dc;">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="font-family:'Helvetica Neue',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#8c6d55;">Order Number</td>
+                        <td align="right" style="font-family:'Helvetica Neue',sans-serif;font-size:13px;color:#2c1a0e;font-weight:600;">{{order_id}}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0;border-bottom:1px solid #f0e8dc;">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="font-family:'Helvetica Neue',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#8c6d55;">Order Date</td>
+                        <td align="right" style="font-family:'Helvetica Neue',sans-serif;font-size:13px;color:#2c1a0e;font-weight:600;">{{order_date}}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0;">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="font-family:'Helvetica Neue',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#8c6d55;">Payment Status</td>
+                        <td align="right" style="font-family:'Helvetica Neue',sans-serif;font-size:13px;color:#5a8a5a;font-weight:600;">Confirmed</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Items Section Header -->
+        <p style="font-family:'Helvetica Neue',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#8c6d55;margin:28px 0 0 0;">Order Summary</p>
+        <hr style="border:none;border-top:2px solid #c9a96e;margin:10px 0 0 0;">
+
+        <!-- Items Table -->
+        <table class="items-table" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;border-collapse:collapse;margin:0 0 8px 0;">
+          <thead>
+            <tr>
+              <th style="font-family:'Helvetica Neue',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:#8c6d55;padding:12px 0;text-align:left;border-bottom:1px solid #e8d5b7;">Item</th>
+              <th style="font-family:'Helvetica Neue',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:#8c6d55;padding:12px 0;text-align:right;border-bottom:1px solid #e8d5b7;">Price</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- {{items_list}} will be replaced by a rendered block of <tr> rows, e.g.:
+            <tr>
+              <td style="padding:14px 0;border-bottom:1px solid #f0e8dc;vertical-align:top;">
+                <div style="font-family:'Georgia',serif;font-size:15px;color:#2c1a0e;">Item Name</div>
+                <div style="font-family:'Helvetica Neue',sans-serif;font-size:12px;color:#8c6d55;margin-top:3px;">Qty: 1 &middot; Size: M</div>
+              </td>
+              <td style="padding:14px 0;border-bottom:1px solid #f0e8dc;vertical-align:top;text-align:right;font-family:'Helvetica Neue',sans-serif;font-size:14px;color:#4a3728;font-weight:500;white-space:nowrap;">$49.00</td>
+            </tr>
+            -->
+            {{items_list}}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="2"><hr style="border:none;border-top:1px solid #e8d5b7;margin:4px 0 0 0;"></td>
+            </tr>
+            <tr>
+              <td style="padding:16px 0 4px 0;font-family:'Helvetica Neue',sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:0.8px;color:#4a3728;font-weight:600;">Order Total</td>
+              <td style="padding:16px 0 4px 0;text-align:right;font-family:'Georgia',serif;font-size:20px;color:#2c1a0e;">{{total}}</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <hr class="divider" style="border:none;border-top:1px solid #e8d5b7;margin:28px 0;">
+
+        <!-- Shipping Info -->
+        <div style="background-color:#f5f0eb;border-left:3px solid #c9a96e;padding:18px 20px;margin:0 0 28px 0;border-radius:0 4px 4px 0;">
+          <p style="font-family:'Helvetica Neue',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#8c6d55;margin:0 0 8px 0;">Estimated Shipping</p>
+          <p style="margin:0;font-size:14px;color:#4a3728;font-family:'Helvetica Neue',sans-serif;line-height:1.6;">
+            Your order is expected to ship within <strong>2&ndash;3 business days</strong>. Once dispatched, you will receive a separate shipping confirmation email with your tracking link.<br><br>
+            <em style="font-size:13px;color:#8c6d55;">Tracking Link: Will be provided upon shipment &mdash; <a href="https://clawboutique.com/orders/{{order_id}}" style="color:#c9a96e;text-decoration:none;">View Order Status</a></em>
+          </p>
+        </div>
+
+        <p style="font-size:15px;color:#4a3728;line-height:1.7;margin:0 0 16px 0;">
+          If you have any questions about your order, reply to this email or reach us at <a href="mailto:support@clawboutique.com" style="color:#c9a96e;text-decoration:none;">support@clawboutique.com</a>.
+        </p>
+
+        <!-- CTA -->
+        <div class="cta-wrapper" style="text-align:center;margin:32px 0;">
+          <a href="https://clawboutique.com/orders/{{order_id}}" class="cta-button" style="display:inline-block;background-color:#2c1a0e;color:#e8d5b7;font-family:'Helvetica Neue',sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:14px 36px;border-radius:2px;">View My Order</a>
+        </div>
+
+        <p style="font-size:14px;color:#8c6d55;line-height:1.7;margin:0;font-style:italic;text-align:center;">
+          With gratitude,<br>
+          The Claw Boutique Team
+        </p>
+
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td class="footer" style="background-color:#2c1a0e;padding:28px 40px;text-align:center;">
+        <p style="font-family:'Helvetica Neue',sans-serif;font-size:12px;color:#8c6d55;margin:0 0 8px 0;line-height:1.6;">
+          &copy; 2026 Claw Boutique &middot; <a href="https://clawboutique.com" style="color:#c9a96e;text-decoration:none;">clawboutique.com</a>
+        </p>
+        <p style="font-family:'Helvetica Neue',sans-serif;font-size:12px;color:#8c6d55;margin:0 0 8px 0;line-height:1.6;">
+          123 Vintage Lane, Suite 4 &middot; Los Angeles, CA 90012
+        </p>
+        <p style="font-family:'Helvetica Neue',sans-serif;font-size:11px;color:#5a4535;margin:16px 0 0 0;line-height:1.6;">
+          You received this email because you placed an order with Claw Boutique.<br>
+          <a href="https://clawboutique.com/unsubscribe?email={{customer_email}}&token={{unsubscribe_token}}" style="color:#6a5545;text-decoration:underline;">Unsubscribe from marketing emails</a>
+          &nbsp;&middot;&nbsp;
+          <a href="https://clawboutique.com/privacy" style="color:#6a5545;text-decoration:underline;">Privacy Policy</a>
+        </p>
+      </td>
+    </tr>
+
+  </table>
+</div>
+</body>
+</html>

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f0f0; }
+
+  /* WhatsApp mockup */
+  .wa-phone { width: 380px; background: #e5ddd5; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.15); }
+  .wa-header { background: #075e54; color: white; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+  .wa-avatar { width: 36px; height: 36px; border-radius: 50%; background: #128c7e; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: white; }
+  .wa-name { font-size: 15px; font-weight: 600; }
+  .wa-status { font-size: 11px; color: rgba(255,255,255,0.7); }
+  .wa-chat { padding: 12px; background: url("data:image/svg+xml,%3Csvg width='400' height='400' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='p' width='50' height='50' patternUnits='userSpaceOnUse'%3E%3Cpath d='M25 0v50M0 25h50' stroke='%23d4ccb5' stroke-width='0.3'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='400' height='400' fill='%23e5ddd5'/%3E%3Crect width='400' height='400' fill='url(%23p)' opacity='0.3'/%3E%3C/svg%3E"); min-height: 200px; display: flex; flex-direction: column; gap: 6px; }
+  .wa-msg { max-width: 85%; padding: 8px 12px; border-radius: 8px; font-size: 13.5px; line-height: 1.45; position: relative; }
+  .wa-msg .time { font-size: 10px; color: rgba(0,0,0,0.4); float: right; margin-left: 8px; margin-top: 4px; }
+  .wa-incoming { background: white; align-self: flex-start; border-top-left-radius: 0; }
+  .wa-outgoing { background: #dcf8c6; align-self: flex-end; border-top-right-radius: 0; }
+  .wa-date { text-align: center; font-size: 11px; color: #8a8a8a; background: rgba(255,255,255,0.8); padding: 4px 12px; border-radius: 6px; align-self: center; margin: 4px 0; }
+
+  /* Email mockup */
+  .email-card { width: 600px; background: white; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); overflow: hidden; }
+  .email-toolbar { background: #f8f9fa; border-bottom: 1px solid #e0e0e0; padding: 8px 16px; display: flex; align-items: center; gap: 12px; }
+  .email-toolbar .dots { display: flex; gap: 6px; }
+  .email-toolbar .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .email-toolbar .dot-r { background: #ff5f57; }
+  .email-toolbar .dot-y { background: #febc2e; }
+  .email-toolbar .dot-g { background: #28c840; }
+  .email-header { padding: 20px 24px; border-bottom: 1px solid #eee; }
+  .email-subject { font-size: 18px; font-weight: 600; color: #1a1a1a; margin-bottom: 12px; }
+  .email-meta { font-size: 13px; color: #666; line-height: 1.6; }
+  .email-meta strong { color: #333; }
+  .email-body { padding: 24px; font-size: 14px; line-height: 1.7; color: #333; }
+  .email-body h3 { font-size: 15px; margin-bottom: 8px; color: #1a1a1a; }
+  .email-body .alert-box { background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 12px 16px; margin: 12px 0; }
+  .email-body .alert-box.danger { background: #f8d7da; border-color: #f5c2c7; }
+  .email-body .item-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
+  .email-body .total-row { display: flex; justify-content: space-between; padding: 8px 0; font-weight: 700; font-size: 15px; border-top: 2px solid #333; margin-top: 4px; }
+  .email-footer { background: #f8f9fa; padding: 16px 24px; font-size: 12px; color: #999; text-align: center; border-top: 1px solid #eee; }
+
+  .mockup-section { padding: 40px; display: flex; justify-content: center; }
+  .mockup-section.dark { background: #1a1a2e; }
+
+  /* Telegram mockup */
+  .tg-phone { width: 380px; background: #efeff3; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.18); }
+  .tg-header { background: linear-gradient(135deg, #1c96c5, #207ae4); color: white; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+  .tg-avatar { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.25); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .tg-name { font-size: 15px; font-weight: 600; }
+  .tg-status { font-size: 11px; color: rgba(255,255,255,0.75); }
+  .tg-chat { padding: 12px; min-height: 200px; display: flex; flex-direction: column; gap: 6px; background: #efeff3; }
+  .tg-msg { max-width: 85%; padding: 8px 12px; border-radius: 12px; font-size: 13px; line-height: 1.5; position: relative; }
+  .tg-msg .time { font-size: 10px; color: rgba(0,0,0,0.35); float: right; margin-left: 8px; margin-top: 4px; }
+  .tg-incoming { background: white; align-self: flex-start; border-top-left-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+  .tg-outgoing { background: #effdde; align-self: flex-end; border-top-right-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+  .tg-date { text-align: center; font-size: 11px; color: #8a8a8a; background: rgba(255,255,255,0.7); padding: 3px 10px; border-radius: 6px; align-self: center; margin: 4px 0; }
+</style>
+</head>
+<body>
+
+<!-- Section 1: WhatsApp Order Conversation -->
+<div class="mockup-section dark" id="wa-order">
+  <div class="wa-phone">
+    <div class="wa-header">
+      <div class="wa-avatar">CB</div>
+      <div>
+        <div class="wa-name">Claw Boutique</div>
+        <div class="wa-status">online</div>
+      </div>
+    </div>
+    <div class="wa-chat">
+      <div class="wa-date">Today</div>
+      <div class="wa-msg wa-outgoing">Do you have any dresses in medium? <span class="time">2:31 PM</span></div>
+      <div class="wa-msg wa-incoming">Hi! Yes, we have these dresses in Medium:<br><br>1. Floral Midi Dress - Sage / M — $52.00<br>2. Ribbed Knit Dress - Black / M — $45.00<br>3. Linen Wrap Dress - Cream / M — $58.00<br><br>Would you like to order any of these? <span class="time">2:31 PM</span></div>
+      <div class="wa-msg wa-outgoing">I'll take the linen wrap dress please <span class="time">2:32 PM</span></div>
+      <div class="wa-msg wa-incoming">Great choice! I'll need a few details to place your order:<br><br>• Name<br>• Email address<br><br>The Linen Wrap Dress - Cream / M is $58.00. <span class="time">2:32 PM</span></div>
+      <div class="wa-msg wa-outgoing">Sarah Chen, sarah@email.com <span class="time">2:33 PM</span></div>
+      <div class="wa-msg wa-incoming">Your order has been placed! 🎉<br><br>📦 Order #31<br>• Linen Wrap Dress - Cream / M<br>• Total: $58.00<br><br>You'll receive a confirmation email shortly. We'll notify you when it ships! <span class="time">2:33 PM</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 2: WhatsApp Survey -->
+<div class="mockup-section dark" id="wa-survey">
+  <div class="wa-phone">
+    <div class="wa-header">
+      <div class="wa-avatar">CB</div>
+      <div>
+        <div class="wa-name">Claw Boutique</div>
+        <div class="wa-status">online</div>
+      </div>
+    </div>
+    <div class="wa-chat">
+      <div class="wa-date">Today</div>
+      <div class="wa-msg wa-incoming">Hi Sarah! Thanks for your Claw Boutique order (#31). We'd love your feedback on Linen Wrap Dress - Cream / M.<br><br>How would you rate your experience? Reply with a number from 1 to 5:<br>&nbsp;&nbsp;1 = Very poor<br>&nbsp;&nbsp;2 = Poor<br>&nbsp;&nbsp;3 = Okay<br>&nbsp;&nbsp;4 = Good<br>&nbsp;&nbsp;5 = Excellent <span class="time">2:34 PM</span></div>
+      <div class="wa-msg wa-outgoing">1 <span class="time">3:15 PM</span></div>
+      <div class="wa-msg wa-incoming">I'm really sorry to hear about your experience. I've flagged this to our store owner who will look into it personally. You should hear back within 24 hours. Thank you for your honesty. <span class="time">3:15 PM</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 3: WhatsApp Cart Recovery -->
+<div class="mockup-section dark" id="wa-cart">
+  <div class="wa-phone">
+    <div class="wa-header">
+      <div class="wa-avatar">CB</div>
+      <div>
+        <div class="wa-name">Claw Boutique</div>
+        <div class="wa-status">online</div>
+      </div>
+    </div>
+    <div class="wa-chat">
+      <div class="wa-date">Today</div>
+      <div class="wa-msg wa-incoming">Hey! We noticed you were eyeing the Floral Wrap Blouse - Ivory / XS at Claw Boutique. Still thinking about it? Complete your order now and enjoy free shipping on us! 🚚✨ <span class="time">4:12 PM</span></div>
+      <div class="wa-msg wa-outgoing">Oh nice! Yes I'll go finish my order, thanks! <span class="time">4:15 PM</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 4: Stock Alert Email -->
+<div class="mockup-section" id="email-stock">
+  <div class="email-card">
+    <div class="email-toolbar">
+      <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+    </div>
+    <div class="email-header">
+      <div class="email-subject">⚠️ [Claw Boutique] Stock Alert: Floral Wrap Blouse - Ivory</div>
+      <div class="email-meta">
+        <strong>From:</strong> orders@anycompany.com<br>
+        <strong>To:</strong> admin@anycompany.com<br>
+        <strong>Date:</strong> March 24, 2026 2:33 PM
+      </div>
+    </div>
+    <div class="email-body">
+      <div class="alert-box">
+        <strong>Low Stock Warning</strong> — Immediate attention may be required.
+      </div>
+      <h3>Stock Analysis Results</h3>
+      <p>The following items need restocking based on recent sales velocity:</p>
+      <div style="margin: 16px 0; border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <tr style="background: #f8f9fa;"><th style="text-align:left;padding:8px 12px;">Product</th><th style="text-align:center;padding:8px;">Stock</th><th style="text-align:center;padding:8px;">Daily Rate</th><th style="text-align:center;padding:8px;">Days Left</th><th style="text-align:center;padding:8px;">Urgency</th></tr>
+          <tr><td style="padding:8px 12px;">Floral Wrap Blouse - Ivory / S</td><td style="text-align:center;padding:8px;"><strong style="color:#dc3545;">0</strong></td><td style="text-align:center;padding:8px;">1.2/day</td><td style="text-align:center;padding:8px;">0</td><td style="text-align:center;padding:8px;"><span style="background:#dc3545;color:white;padding:2px 8px;border-radius:4px;font-size:11px;">OUT OF STOCK</span></td></tr>
+          <tr style="background:#fff8f8;"><td style="padding:8px 12px;">Floral Wrap Blouse - Ivory / M</td><td style="text-align:center;padding:8px;"><strong style="color:#dc3545;">0</strong></td><td style="text-align:center;padding:8px;">0.8/day</td><td style="text-align:center;padding:8px;">0</td><td style="text-align:center;padding:8px;"><span style="background:#dc3545;color:white;padding:2px 8px;border-radius:4px;font-size:11px;">OUT OF STOCK</span></td></tr>
+        </table>
+      </div>
+      <p style="margin-top: 12px;">Suggested reorder: Floral Wrap Blouse - Ivory / S (15 units), Floral Wrap Blouse - Ivory / M (10 units).</p>
+      <p style="color: #666; font-size: 13px; margin-top: 16px;">Reply to this email with instructions and ClawBot will process your request.</p>
+    </div>
+    <div class="email-footer">Claw Boutique — Powered by OpenClaw + Amazon Bedrock</div>
+  </div>
+</div>
+
+<!-- Section 5: Review Escalation Email -->
+<div class="mockup-section" id="email-escalation">
+  <div class="email-card">
+    <div class="email-toolbar">
+      <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+    </div>
+    <div class="email-header">
+      <div class="email-subject">🚨 [Claw Boutique] Negative Review Alert — 1-Star Rating</div>
+      <div class="email-meta">
+        <strong>From:</strong> orders@anycompany.com<br>
+        <strong>To:</strong> admin@anycompany.com<br>
+        <strong>Date:</strong> March 24, 2026 3:16 PM
+      </div>
+    </div>
+    <div class="email-body">
+      <div class="alert-box danger">
+        <strong>Customer Escalation</strong> — A customer left a negative review that needs your attention.
+      </div>
+      <h3>Review Details</h3>
+      <div style="margin: 12px 0; padding: 16px; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #dc3545;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+          <strong>Sarah Chen</strong>
+          <span>⭐ 1 / 5</span>
+        </div>
+        <div style="font-size:13px; color:#666; margin-bottom:8px;">Phone: +15550001234 — Order #31</div>
+        <p style="font-style: italic; color: #333;">"Very disappointed with the quality. The fabric feels cheap and nothing like what was shown."</p>
+      </div>
+      <p style="margin-top: 16px;">An escalation has been created automatically. You can resolve it from the <strong>Admin Dashboard → Escalations</strong> tab.</p>
+      <p style="color: #666; font-size: 13px; margin-top: 12px;">Reply to this email with instructions (e.g., "offer a 20% discount" or "send a replacement") and ClawBot will follow up with the customer on WhatsApp.</p>
+    </div>
+    <div class="email-footer">Claw Boutique — Powered by OpenClaw + Amazon Bedrock</div>
+  </div>
+</div>
+
+<!-- Section 6: Order Confirmation Email -->
+<div class="mockup-section" id="email-confirmation">
+  <div class="email-card">
+    <div class="email-toolbar">
+      <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+    </div>
+    <div class="email-header">
+      <div class="email-subject">🛍️ Order Confirmed — Claw Boutique #31</div>
+      <div class="email-meta">
+        <strong>From:</strong> orders@anycompany.com<br>
+        <strong>To:</strong> sarah@email.com<br>
+        <strong>Date:</strong> March 24, 2026 2:33 PM
+      </div>
+    </div>
+    <div class="email-body">
+      <p>Hi Sarah,</p>
+      <p style="margin-top:12px;">Thank you for your order! Here's your receipt:</p>
+      <div style="margin: 16px 0; padding: 16px; background: #f8f9fa; border-radius: 6px;">
+        <div style="font-size: 13px; color: #666; margin-bottom: 12px;">Order #31 — March 24, 2026</div>
+        <div class="item-row"><span>Linen Wrap Dress - Cream / M × 1</span><span>$58.00</span></div>
+        <div class="total-row"><span>Total</span><span>$58.00</span></div>
+      </div>
+      <p>We'll send you a shipping confirmation with tracking info once your order is on its way.</p>
+      <p style="margin-top: 16px;">Questions? Just reply to this email or text us on WhatsApp.</p>
+      <p style="margin-top: 12px;">— Claw Boutique</p>
+    </div>
+    <div class="email-footer">Claw Boutique — Powered by OpenClaw + Amazon Bedrock</div>
+  </div>
+</div>
+
+<!-- Section 7: Telegram Stock Alert + Restock Command -->
+<div class="mockup-section dark" id="tg-stock">
+  <div class="tg-phone">
+    <div class="tg-header">
+      <div class="tg-avatar">🤖</div>
+      <div>
+        <div class="tg-name">ClawBot</div>
+        <div class="tg-status">bot</div>
+      </div>
+    </div>
+    <div class="tg-chat">
+      <div class="tg-date">Today</div>
+      <div class="tg-msg tg-incoming">
+        [Claw Boutique - Stock Alert]<br><br>
+        Low stock detected after order #42.<br><br>
+        • Floral Wrap Blouse - Ivory / S: <strong>0 units</strong> (OUT OF STOCK)<br>
+        • Floral Wrap Blouse - Ivory / M: <strong>2 units</strong> (critical)<br><br>
+        Daily sell rate: 1.2/day. Ivory/M runs out in ~1 day.<br><br>
+        Reply "restock 20" to reorder now.
+        <span class="time">2:33 PM</span>
+      </div>
+      <div class="tg-msg tg-outgoing">restock 20 <span class="time">2:35 PM</span></div>
+      <div class="tg-msg tg-incoming">
+        ✅ Restock confirmed!<br><br>
+        • Floral Wrap Blouse - Ivory / S: +20 units (new total: 20)<br>
+        • Floral Wrap Blouse - Ivory / M: +20 units (new total: 22)
+        <span class="time">2:35 PM</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 8: Telegram Review Escalation + Apologize Command -->
+<div class="mockup-section dark" id="tg-escalation">
+  <div class="tg-phone">
+    <div class="tg-header">
+      <div class="tg-avatar">🤖</div>
+      <div>
+        <div class="tg-name">ClawBot</div>
+        <div class="tg-status">bot</div>
+      </div>
+    </div>
+    <div class="tg-chat">
+      <div class="tg-date">Today</div>
+      <div class="tg-msg tg-incoming">
+        [Claw Boutique - Review Alert]<br><br>
+        ⭐ 1-star review received.<br><br>
+        Customer: Sarah Chen (+15550001234)<br>
+        Order: #31<br>
+        Review: "Very disappointed with the quality. Nothing like what was shown."<br><br>
+        Reply "apologize" to send apology + refund to this customer.
+        <span class="time">3:16 PM</span>
+      </div>
+      <div class="tg-msg tg-outgoing">apologize <span class="time">3:18 PM</span></div>
+      <div class="tg-msg tg-incoming">
+        ✅ Apology sent to Sarah Chen on WhatsApp.<br><br>
+        Full refund approved. Escalation #14 marked as resolved.<br><br>
+        Memory saved — similar cases will be handled automatically next time.
+        <span class="time">3:18 PM</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 9: Telegram Order Notification -->
+<div class="mockup-section dark" id="tg-order">
+  <div class="tg-phone">
+    <div class="tg-header">
+      <div class="tg-avatar">🤖</div>
+      <div>
+        <div class="tg-name">ClawBot</div>
+        <div class="tg-status">bot</div>
+      </div>
+    </div>
+    <div class="tg-chat">
+      <div class="tg-date">Today</div>
+      <div class="tg-msg tg-incoming">
+        [Claw Boutique - New Order]<br><br>
+        📦 Order #43 placed via web storefront.<br><br>
+        Customer: Demo Tester (+6597209504)<br>
+        Items: Floral Wrap Blouse - Ivory / M × 1<br>
+        Total: $38.00
+        <span class="time">4:12 PM</span>
+      </div>
+      <div class="tg-msg tg-outgoing">mark 43 as shipped, tracking ABC123 <span class="time">4:20 PM</span></div>
+      <div class="tg-msg tg-incoming">
+        ✅ Order #43 marked as shipped.<br>
+        Tracking: ABC123<br>
+        Shipping confirmation sent to Demo Tester by email.
+        <span class="time">4:20 PM</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
