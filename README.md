@@ -213,6 +213,39 @@ No context values needed for destroy.
 
 Steps 2 and 3 only need to be done once per account. Subsequent deploys reuse existing config.
 
+### Verify the deployment
+
+After `cdk deploy` completes, it prints stack outputs with URLs and resource names. Run this quick smoke test to confirm all services are up (replace the placeholder values with your CDK outputs):
+
+```bash
+# Grab outputs from the CDK deploy (or run: cd cdk && npx cdk deploy 2>&1 | grep ClawBoutiqueStack)
+STOREFRONT_URL="<ClawBoutiqueStack.Storefront>"
+STORE_API_URL="<ClawBoutiqueStack.StoreApiUrl>"
+
+echo "=== Storefront ===" \
+  && curl -s -o /dev/null -w "%{http_code}" "$STOREFRONT_URL" \
+  && echo "" \
+  && echo "=== Admin Dashboard ===" \
+  && curl -s -o /dev/null -w "%{http_code}" "$STOREFRONT_URL/admin.html" \
+  && echo "" \
+  && echo "=== Store API (products) ===" \
+  && curl -s "${STORE_API_URL}api/products" \
+     | python3 -c "import json,sys; d=json.load(sys.stdin); print(f'{len(d)} products loaded')"
+```
+
+Expected output:
+
+```
+=== Storefront ===
+200
+=== Admin Dashboard ===
+200
+=== Store API (products) ===
+20 products loaded
+```
+
+If the Store API returns `502`, wait 30 seconds for the Lambda cold start and retry. Note: the Store API is unauthenticated for demo simplicity — don't seed real customer data, and add API auth before adapting this for production.
+
 ### Connecting to OpenClaw on EKS
 
 After deploy, CDK prints a `ClawBoutiqueClusterConfigCommand` output with the `aws eks update-kubeconfig` command. Copy and run it to configure kubectl.

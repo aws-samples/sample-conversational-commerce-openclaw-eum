@@ -24,7 +24,7 @@ const app = new App();
 new ClawBoutiqueStack(app, "ClawBoutiqueStack", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: "us-east-1",
+    region: process.env.CDK_DEFAULT_REGION || "us-east-1",
   },
   description:
     "Claw Boutique: SNS, Lambda dispatcher, EKS (OpenClaw), RDS MySQL, " +
