@@ -7,7 +7,7 @@
 // Config
 // ---------------------------------------------------------------------------
 
-const WHATSAPP_NUMBER = '15550001234'; // placeholder – replace with real number
+const WHATSAPP_NUMBER = (window.WHATSAPP_NUMBER || '15550001234').replace(/[^0-9]/g, '');
 const API_BASE = window.STORE_API_URL || '';  // set via config.js or same origin
 
 // ---------------------------------------------------------------------------
@@ -670,6 +670,14 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('customer_name').value = localStorage.getItem('cb_customer_name') || 'Demo Tester';
   document.getElementById('customer_email').value = localStorage.getItem('cb_customer_email') || 'test@example.com';
   localStorage.setItem('cb_customer_phone', savedPhone);
+
+  // Update WhatsApp links with the configured number
+  document.querySelectorAll('a.wa-link').forEach(a => {
+    a.href = `https://wa.me/${WHATSAPP_NUMBER}`;
+  });
+  document.querySelectorAll('a.wa-link-help').forEach(a => {
+    a.href = `https://wa.me/${WHATSAPP_NUMBER}?text=Hi%2C%20I%20need%20help%20with%20my%20order`;
+  });
 
   // Initial render
   renderCartBadge();
