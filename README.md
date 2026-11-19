@@ -166,6 +166,60 @@ See [readme_agentic_deployment.md](readme_agentic_deployment.md) for the full st
 
 ---
 
+## Security
+
+### Public and protected routes
+
+The Store API exposes two classes of routes:
+
+**Public (no token required):**
+- `GET /api/health`
+- `GET /api/products`
+- `GET /api/products/<id>`
+- `POST /api/orders`
+- `POST /api/carts/save`
+- `OPTIONS` on all paths (CORS preflight)
+
+**Protected (bearer token required):**
+All other routes, including order status updates, escalation reads and writes, memory, stats, and stock analysis.
+
+### Getting the admin token
+
+After deploy, retrieve the token from Secrets Manager using the `StoreApiTokenSecretArn` output:
+
+```bash
+aws secretsmanager get-secret-value \
+  --secret-id <StoreApiTokenSecretArn from cdk deploy output> \
+  --query SecretString \
+  --output text
+```
+
+### Signing in to the admin dashboard
+
+Open `/admin.html`. On first load (or after a 401), the dashboard shows a sign-in form. Paste the token from the command above and click "Sign in". The token is stored in `sessionStorage` only and is never written to `localStorage`, cookies, or config files. Click "Sign out" in the sidebar to clear it.
+
+### Calling protected routes from the CLI
+
+```bash
+TOKEN=$(aws secretsmanager get-secret-value \
+  --secret-id <StoreApiTokenSecretArn> \
+  --query SecretString --output text)
+
+curl -s "${STORE_API_URL}api/stats" \
+  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+```
+
+### Production hardening
+
+This sample uses a single shared token for simplicity. Before going to production:
+
+- Replace the shared token with per-caller identities: IAM SigV4 signing for server-side callers (agents, Lambda), and Amazon Cognito (user pool + hosted UI) for the admin dashboard.
+- Add AWS WAF to the API Gateway stage with rate limiting on the public order and cart endpoints.
+- Enable Secrets Manager automatic rotation for the token.
+- Restrict CORS to your CloudFront distribution origin rather than a wildcard.
+
+---
+
 ## Deployment
 
 ### Prerequisites
@@ -188,6 +242,7 @@ cp cdk/cdk.context.example.json cdk/cdk.context.json
 # Edit cdk/cdk.context.json with your Telegram bot token, seller chat ID,
 # WhatsApp phone number ID, WABA ID, and SES sender email
 
+cd lambda/dispatcher && ./build.sh && cd ../..
 cd cdk && npm install
 npx cdk bootstrap
 npx cdk deploy
@@ -244,7 +299,7 @@ Expected output:
 20 products loaded
 ```
 
-If the Store API returns `502`, wait 30 seconds for the Lambda cold start and retry. Note: the Store API is unauthenticated for demo simplicity — don't seed real customer data, and add API auth before adapting this for production.
+If the Store API returns `502`, wait 30 seconds for the Lambda cold start and retry.
 
 ### Connecting to OpenClaw on EKS
 
@@ -265,13 +320,16 @@ The Control UI requires a secure context (HTTPS or localhost). Use kubectl port-
 kubectl port-forward svc/openclaw 18789:80
 ```
 
-Open `http://localhost:18789` in your browser. The UI requires a gateway token for authentication. Get it from the running pod:
+Open `http://localhost:18789` in your browser. The UI requires a gateway token for authentication. The token is stored in AWS Secrets Manager (stack output `OpenClawGatewayTokenSecretArn`):
 
 ```bash
-kubectl exec deploy/openclaw -c openclaw -- printenv OPENCLAW_GATEWAY_TOKEN
+aws secretsmanager get-secret-value \
+  --secret-id $(aws cloudformation describe-stacks --stack-name ClawBoutiqueStack \
+    --query "Stacks[0].Outputs[?OutputKey=='OpenClawGatewayTokenSecretArn'].OutputValue" --output text) \
+  --query SecretString --output text
 ```
 
-Paste the token into the Control UI settings (gear icon, top right). The token regenerates on every `cdk deploy`, so you need to grab it again after redeployments.
+Paste the token into the Control UI settings (gear icon, top right). The token stays the same across redeployments.
 
 ---
 

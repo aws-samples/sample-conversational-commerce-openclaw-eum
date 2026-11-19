@@ -9,7 +9,7 @@ Usage:
     python recall_memory.py --customer_phone "+12125550101"
     python recall_memory.py --search "wrong size"
 
-Required env vars: STORE_API_URL (and optionally STORE_API_KEY)
+Required env vars: STORE_API_URL, plus STORE_API_TOKEN or STORE_API_TOKEN_SECRET_ARN (with AWS_REGION)
 """
 
 import argparse

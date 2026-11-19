@@ -74,9 +74,9 @@
   // Store API — tools call the Store API via HTTP instead of connecting to MySQL directly
   // ---------------------------------------------------------------------------
   "store_api": {
-    "_comment": "All tool scripts read STORE_API_URL and optionally STORE_API_KEY. Set them as environment variables in the EKS pod or .env file.",
+    "_comment": "Tool scripts read STORE_API_URL (required) and obtain the bearer token from STORE_API_TOKEN_SECRET_ARN via Secrets Manager. For local dev, set STORE_API_TOKEN (raw token) instead. Never set STORE_API_TOKEN in CDK or EKS manifests.",
     "url_env": "STORE_API_URL",
-    "key_env": "STORE_API_KEY"
+    "token_secret_arn_env": "STORE_API_TOKEN_SECRET_ARN"
   },
 
   // ---------------------------------------------------------------------------
@@ -89,7 +89,7 @@
     "_comment": "Build the tools image from openclaw/tools/Dockerfile. Tools run in isolated containers with env vars passed through.",
     "allowed_env_vars": [
       "STORE_API_URL",
-      "STORE_API_KEY",
+      "STORE_API_TOKEN_SECRET_ARN",
       "WHATSAPP_PHONE_NUMBER_ID",
       "WHATSAPP_WABA_ID",
       "AWS_ACCESS_KEY_ID",

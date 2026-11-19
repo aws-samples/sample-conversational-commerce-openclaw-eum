@@ -8,6 +8,52 @@ from strands import tool
 
 STORE_API_URL = os.environ.get("STORE_API_URL", "").rstrip("/")
 
+# Process-level token cache; fetched from Secrets Manager at most once.
+_cached_token: str | None = None
+
+
+def _get_token() -> str:
+    """Return the bearer token, fetching from Secrets Manager if needed."""
+    global _cached_token
+    if _cached_token is not None:
+        return _cached_token
+
+    raw = os.environ.get("STORE_API_TOKEN", "").strip()
+    if raw:
+        _cached_token = raw
+        return _cached_token
+
+    secret_arn = os.environ.get("STORE_API_TOKEN_SECRET_ARN", "").strip()
+    if not secret_arn:
+        raise EnvironmentError(
+            "Store API authentication is not configured. "
+            "Set STORE_API_TOKEN or STORE_API_TOKEN_SECRET_ARN."
+        )
+
+    region = (os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "").strip()
+    if not region:
+        raise EnvironmentError(
+            "AWS_REGION or AWS_DEFAULT_REGION must be set to fetch the Store API token from Secrets Manager."
+        )
+
+    import boto3
+    client = boto3.client("secretsmanager", region_name=region)
+    response = client.get_secret_value(SecretId=secret_arn)
+    token = response["SecretString"].strip()
+    if not token:
+        raise EnvironmentError(
+            f"Secrets Manager secret {secret_arn} returned an empty value."
+        )
+    _cached_token = token
+    return _cached_token
+
+
+def _auth_headers() -> dict:
+    return {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {_get_token()}",
+    }
+
 
 def _http_get(path: str, query_params: dict | None = None) -> dict:
     url = STORE_API_URL + path
@@ -16,7 +62,8 @@ def _http_get(path: str, query_params: dict | None = None) -> dict:
         if filtered:
             url += "?" + urllib.parse.urlencode(filtered)
     req = urllib.request.Request(url, method="GET")
-    req.add_header("Content-Type", "application/json")
+    for k, v in _auth_headers().items():
+        req.add_header(k, v)
     with urllib.request.urlopen(req, timeout=10) as resp:
         return json.loads(resp.read().decode())
 
@@ -25,7 +72,8 @@ def _http_post(path: str, body: dict) -> dict:
     url = STORE_API_URL + path
     data = json.dumps(body).encode()
     req = urllib.request.Request(url, data=data, method="POST")
-    req.add_header("Content-Type", "application/json")
+    for k, v in _auth_headers().items():
+        req.add_header(k, v)
     with urllib.request.urlopen(req, timeout=10) as resp:
         return json.loads(resp.read().decode())
 

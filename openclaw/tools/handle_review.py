@@ -8,7 +8,7 @@ For 4-5 star reviews: sends a personalized thank-you WhatsApp message.
 For 1-2 star reviews: escalates to seller with a drafted apology response.
 For 3 star reviews: sends a gentle follow-up asking how to improve.
 
-Required env vars: STORE_API_URL (and optionally STORE_API_KEY)
+Required env vars: STORE_API_URL, plus STORE_API_TOKEN or STORE_API_TOKEN_SECRET_ARN (with AWS_REGION)
 """
 
 import argparse

@@ -39,6 +39,10 @@ import {
   InvokeAgentRuntimeCommand,
 } from "@aws-sdk/client-bedrock-agentcore";
 import {
+  SecretsManagerClient,
+  GetSecretValueCommand,
+} from "@aws-sdk/client-secrets-manager";
+import {
   SocialMessagingClient,
   SendWhatsAppMessageCommand,
 } from "@aws-sdk/client-socialmessaging";
@@ -54,10 +58,11 @@ import type {
 // ---------------------------------------------------------------------------
 
 const GATEWAY_URL = (process.env.OPENCLAW_GATEWAY_URL ?? "").replace(/\/$/, "");
-const GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN ?? "";
+const GATEWAY_TOKEN_SECRET_ARN = process.env.OPENCLAW_GATEWAY_TOKEN_SECRET_ARN ?? "";
 const AGENT_RUNTIME_ARN = process.env.AGENT_RUNTIME_ARN ?? "";
 const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID ?? "";
 const STORE_API_URL = (process.env.STORE_API_URL ?? "").replace(/\/$/, "");
+const STORE_API_TOKEN_SECRET_ARN = process.env.STORE_API_TOKEN_SECRET_ARN ?? "";
 
 if (!GATEWAY_URL) {
   console.warn("[dispatcher] OPENCLAW_GATEWAY_URL is not set – SES/status POSTs will fail");
@@ -101,7 +106,101 @@ function isRateLimited(sender: string): boolean {
 // ---------------------------------------------------------------------------
 
 const agentCoreClient = new BedrockAgentCoreClient({});
+const secretsManagerClient = new SecretsManagerClient({});
 const socialMessagingClient = new SocialMessagingClient({});
+
+// ---------------------------------------------------------------------------
+// Store API token (fetched once per container, cached for reuse)
+// ---------------------------------------------------------------------------
+
+/** Cached gateway token. Populated on first call to getGatewayToken(). */
+let cachedGatewayToken: string | null = null;
+
+/**
+ * Returns the OpenClaw gateway bearer token.
+ * Resolution order:
+ *   1. OPENCLAW_GATEWAY_TOKEN env var (local-dev override, never set by CDK).
+ *   2. Secrets Manager secret at OPENCLAW_GATEWAY_TOKEN_SECRET_ARN.
+ * The result is cached for the lifetime of the container.
+ * Returns null if neither source is configured.
+ */
+async function getGatewayToken(): Promise<string | null> {
+  if (cachedGatewayToken !== null) {
+    return cachedGatewayToken;
+  }
+
+  const envToken = process.env.OPENCLAW_GATEWAY_TOKEN;
+  if (envToken) {
+    cachedGatewayToken = envToken;
+    return cachedGatewayToken;
+  }
+
+  if (!GATEWAY_TOKEN_SECRET_ARN) {
+    return null;
+  }
+
+  try {
+    const result = await secretsManagerClient.send(
+      new GetSecretValueCommand({ SecretId: GATEWAY_TOKEN_SECRET_ARN })
+    );
+    const token = result.SecretString ?? null;
+    if (token) {
+      cachedGatewayToken = token;
+    }
+    return cachedGatewayToken;
+  } catch (err) {
+    log("ERROR", "Failed to fetch gateway token from Secrets Manager", {
+      secretArn: GATEWAY_TOKEN_SECRET_ARN,
+      error: (err as Error).message,
+    });
+    return null;
+  }
+}
+
+/** Cached raw token value. Populated on first call to getStoreApiToken(). */
+let cachedStoreApiToken: string | null = null;
+
+/**
+ * Returns the Store API bearer token.
+ * Resolution order:
+ *   1. STORE_API_TOKEN env var (local-dev override, never set by CDK).
+ *   2. Secrets Manager secret at STORE_API_TOKEN_SECRET_ARN.
+ * The result is cached for the lifetime of the container.
+ * Returns null if neither source is configured.
+ */
+async function getStoreApiToken(): Promise<string | null> {
+  if (cachedStoreApiToken !== null) {
+    return cachedStoreApiToken;
+  }
+
+  // Local-dev override takes precedence.
+  const envToken = process.env.STORE_API_TOKEN;
+  if (envToken) {
+    cachedStoreApiToken = envToken;
+    return cachedStoreApiToken;
+  }
+
+  if (!STORE_API_TOKEN_SECRET_ARN) {
+    return null;
+  }
+
+  try {
+    const result = await secretsManagerClient.send(
+      new GetSecretValueCommand({ SecretId: STORE_API_TOKEN_SECRET_ARN })
+    );
+    const token = result.SecretString ?? null;
+    if (token) {
+      cachedStoreApiToken = token;
+    }
+    return cachedStoreApiToken;
+  } catch (err) {
+    log("ERROR", "Failed to fetch Store API token from Secrets Manager", {
+      secretArn: STORE_API_TOKEN_SECRET_ARN,
+      error: (err as Error).message,
+    });
+    return null;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Structured logger
@@ -129,11 +228,15 @@ async function postToGateway(path: string, body: unknown): Promise<unknown> {
 }
 
 async function postToUrl(url: string, body: unknown): Promise<unknown> {
+  const gatewayToken = await getGatewayToken();
+  if (!gatewayToken) {
+    throw new Error("OpenClaw gateway token is not configured");
+  }
   try {
     const response = await axios.post(url, body, {
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${GATEWAY_TOKEN}`,
+        Authorization: `Bearer ${gatewayToken}`,
       },
       timeout: 25_000, // 25 s – allow time for agent processing
     });
@@ -202,11 +305,22 @@ async function submitWhatsAppReview(phone: string, rating: number): Promise<{ ac
     log("WARN", "STORE_API_URL not set, cannot submit WhatsApp review");
     return null;
   }
+
+  const token = await getStoreApiToken();
+  if (!token) {
+    log("WARN", "Store API token unavailable, cannot submit WhatsApp review");
+    return null;
+  }
+
   try {
-    const resp = await axios.post(`${STORE_API_URL}/api/reviews/from-whatsapp`, {
-      phone,
-      rating,
-    }, { timeout: 10_000 });
+    const resp = await axios.post(
+      `${STORE_API_URL}/api/reviews/from-whatsapp`,
+      { phone, rating },
+      {
+        timeout: 10_000,
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
     return resp.data as { action: string; customer_name?: string };
   } catch (err) {
     const axiosErr = err as AxiosError;

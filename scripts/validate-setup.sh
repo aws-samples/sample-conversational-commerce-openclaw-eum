@@ -233,12 +233,12 @@ if aws lambda get-function \
     GW_TOKEN=$(aws lambda get-function-configuration \
         --function-name "${DISPATCHER_FN_NAME}" \
         --region "${REGION}" \
-        --query 'Environment.Variables.OPENCLAW_GATEWAY_TOKEN' \
+        --query 'Environment.Variables.OPENCLAW_GATEWAY_TOKEN_SECRET_ARN' \
         --output text 2>/dev/null || echo "None")
     if [[ "${GW_TOKEN}" != "None" && -n "${GW_TOKEN}" ]]; then
-        chk_pass "Lambda env OPENCLAW_GATEWAY_TOKEN is set"
+        chk_pass "Lambda env OPENCLAW_GATEWAY_TOKEN_SECRET_ARN is set"
     else
-        chk_fail "Lambda env OPENCLAW_GATEWAY_TOKEN is NOT set — requests to OpenClaw will be rejected"
+        chk_fail "Lambda env OPENCLAW_GATEWAY_TOKEN_SECRET_ARN is NOT set: requests to OpenClaw will be rejected"
     fi
 else
     chk_fail "Lambda function NOT found: ${DISPATCHER_FN_NAME}"
