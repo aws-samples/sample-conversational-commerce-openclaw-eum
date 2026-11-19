@@ -50,7 +50,6 @@ import type {
   SNSEvent,
   SNSEventRecord,
   Context,
-  Callback,
 } from "aws-lambda";
 
 // ---------------------------------------------------------------------------
@@ -674,10 +673,11 @@ function isWhatsAppEvent(record: SNSEventRecord): boolean {
 // Main handler
 // ---------------------------------------------------------------------------
 
+// Async handler with no callback parameter: Node.js 24 and later reject
+// handlers that declare a third (callback) argument.
 export const handler = async (
   event: SNSEvent,
-  _context: Context,
-  _callback: Callback
+  _context: Context
 ): Promise<void> => {
   log("INFO", "Dispatcher invoked", {
     recordCount: event.Records.length,

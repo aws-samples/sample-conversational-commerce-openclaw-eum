@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@aws-cdk/aws-bedrock-agentcore-alpha": "^2.244.0-alpha.0",
-    "@aws-cdk/lambda-layer-kubectl-v30": "^2.0.4",
+    "@aws-cdk/lambda-layer-kubectl-v37": "^2.0.0",
     "aws-cdk-lib": "^2.170.0",
     "constructs": "^10.0.0",
     "source-map-support": "^0.5.21"

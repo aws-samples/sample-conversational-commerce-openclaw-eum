@@ -47,7 +47,7 @@ import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as rds from "aws-cdk-lib/aws-rds";
 import * as eks from "aws-cdk-lib/aws-eks";
 import * as ecr_assets from "aws-cdk-lib/aws-ecr-assets";
-import { KubectlV30Layer } from "@aws-cdk/lambda-layer-kubectl-v30";
+import { KubectlV37Layer } from "@aws-cdk/lambda-layer-kubectl-v37";
 
 export class ClawBoutiqueStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -232,7 +232,7 @@ export class ClawBoutiqueStack extends Stack {
       description:
         "Routes SNS-wrapped inbound events (WhatsApp via EUM Social) " +
         "to the OpenClaw gateway for processing and sends replies.",
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       code: dispatcherCode,
       handler: "index.handler",
       role: dispatcherRole,
@@ -365,8 +365,9 @@ export class ClawBoutiqueStack extends Stack {
     const mastersRole = iam.Role.fromRoleName(this, "AdminRole", "Admin");
     const cluster = new eks.Cluster(this, "ClawBoutiqueCluster", {
       clusterName: "claw-boutique",
-      version: eks.KubernetesVersion.V1_30,
-      kubectlLayer: new KubectlV30Layer(this, "KubectlLayer"),
+      // aws-cdk-lib 2.261 has no V1_37 constant yet, so pass the version string.
+      version: eks.KubernetesVersion.of("1.37"),
+      kubectlLayer: new KubectlV37Layer(this, "KubectlLayer"),
       vpc,
       mastersRole,
       authenticationMode: eks.AuthenticationMode.API_AND_CONFIG_MAP,
