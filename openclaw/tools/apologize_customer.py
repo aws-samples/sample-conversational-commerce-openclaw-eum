@@ -12,7 +12,7 @@ Output (stdout, JSON):
     resolve mode:  {"success": true, "escalation_id": N, "customer_phone": "...", ...}
     On error:      {"error": "<message>"}
 
-Required env vars: STORE_API_URL (and optionally STORE_API_KEY)
+Required env vars: STORE_API_URL, plus STORE_API_TOKEN or STORE_API_TOKEN_SECRET_ARN (with AWS_REGION)
 """
 
 import argparse

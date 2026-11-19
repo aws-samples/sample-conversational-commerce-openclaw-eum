@@ -241,7 +241,7 @@ print('yes' if env.get('OPENCLAW_GATEWAY_URL','') else 'no')
             issue "OPENCLAW_GATEWAY_URL not set on Lambda — dispatcher will fail to route events"
             info "Update via: aws lambda update-function-configuration \\"
             info "  --function-name ${LAMBDA_NAME} \\"
-            info "  --environment 'Variables={OPENCLAW_GATEWAY_URL=https://...,OPENCLAW_GATEWAY_TOKEN=...}'"
+            info "  --environment 'Variables={OPENCLAW_GATEWAY_URL=https://...,OPENCLAW_GATEWAY_TOKEN_SECRET_ARN=arn:aws:secretsmanager:...}'"
         fi
     fi
 fi

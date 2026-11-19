@@ -1,7 +1,7 @@
 FROM node:22-slim
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 python3-pip ca-certificates git \
+    && apt-get install -y --no-install-recommends python3 python3-pip python3-boto3 ca-certificates git \
     && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g openclaw@2026.3.2

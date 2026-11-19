@@ -12,6 +12,48 @@ const API_BASE = window.STORE_API_URL || '';
 const REFRESH_INTERVAL_MS = 30_000;
 
 // ---------------------------------------------------------------------------
+// Auth: bearer token kept in sessionStorage only
+// ---------------------------------------------------------------------------
+const ADMIN_TOKEN_KEY = 'clawAdminToken';
+
+function get_token() {
+  return sessionStorage.getItem(ADMIN_TOKEN_KEY) || null;
+}
+
+function auth_headers() {
+  const tok = get_token();
+  return tok ? { 'Authorization': 'Bearer ' + tok } : {};
+}
+
+function show_token_form() {
+  const gate = el('token-gate');
+  if (gate) gate.classList.remove('hidden');
+}
+
+function hide_token_form() {
+  const gate = el('token-gate');
+  if (gate) gate.classList.add('hidden');
+}
+
+function submit_token() {
+  const input = el('token-input');
+  if (!input) return;
+  const val = input.value.trim();
+  if (!val) return;
+  sessionStorage.setItem(ADMIN_TOKEN_KEY, val);
+  input.value = '';
+  hide_token_form();
+  navigate(_current_section);
+  start_auto_refresh();
+}
+
+function sign_out() {
+  sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+  if (_refresh_timer) { clearInterval(_refresh_timer); _refresh_timer = null; }
+  show_token_form();
+}
+
+// ---------------------------------------------------------------------------
 // Utility helpers
 // ---------------------------------------------------------------------------
 
@@ -86,7 +128,7 @@ const STATUS_CLASSES = {
 
 function status_badge(status) {
   const cls = STATUS_CLASSES[status] || 'bg-slate-100 text-slate-700';
-  return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${cls} capitalize">${status || '—'}</span>`;
+  return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${cls} capitalize">${escHtml(status) || '—'}</span>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -135,7 +177,8 @@ function show_toast(message, type = 'success') {
 // API wrapper
 // ---------------------------------------------------------------------------
 async function api_get(path) {
-  const res = await fetch(API_BASE + path);
+  const res = await fetch(API_BASE + path, { headers: auth_headers() });
+  if (res.status === 401) { show_token_form(); throw new Error('Unauthorized'); }
   if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`);
   return res.json();
 }
@@ -143,9 +186,10 @@ async function api_get(path) {
 async function api_patch(path, body) {
   const res = await fetch(API_BASE + path, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...auth_headers() },
     body: JSON.stringify(body),
   });
+  if (res.status === 401) { show_token_form(); throw new Error('Unauthorized'); }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || `PATCH ${path} failed: ${res.status}`);
@@ -156,9 +200,10 @@ async function api_patch(path, body) {
 async function api_post(path, body) {
   const res = await fetch(API_BASE + path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...auth_headers() },
     body: JSON.stringify(body),
   });
+  if (res.status === 401) { show_token_form(); throw new Error('Unauthorized'); }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || `POST ${path} failed: ${res.status}`);
@@ -593,7 +638,7 @@ function render_escalations() {
           </div>
           ${is_open ? `
           <div class="flex flex-wrap gap-2 pt-1">
-            <button onclick="AdminApp.send_apology('${e.id}', '${escAttr(e.customer_phone || '')}', this)" class="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-sm">
+            <button onclick="AdminApp.send_apology('${escAttr(String(e.id))}', '${escAttr(e.customer_phone || '')}', this)" class="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-sm">
               <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.79 23.329l4.47-1.463A11.937 11.937 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818c-2.168 0-4.19-.587-5.932-1.61l-.424-.254-2.65.868.89-2.582-.278-.442A9.772 9.772 0 012.182 12c0-5.415 4.403-9.818 9.818-9.818S21.818 6.585 21.818 12 17.415 21.818 12 21.818z"/></svg>
               Send Apology &amp; Refund via WhatsApp
             </button>
@@ -926,13 +971,13 @@ async function load_insights() {
             <div class="flex items-start gap-3">
               <span class="text-lg flex-shrink-0">${i.icon}</span>
               <div class="flex-1 min-w-0">
-                <h4 class="text-sm font-semibold ${priorityTextColors[i.priority]}">${i.title}</h4>
-                <p class="text-sm text-slate-600 mt-1">${i.body}</p>
+                <h4 class="text-sm font-semibold ${priorityTextColors[i.priority]}">${escHtml(i.title)}</h4>
+                <p class="text-sm text-slate-600 mt-1">${escHtml(i.body)}</p>
                 <div class="mt-2 flex items-start gap-2 bg-white/60 rounded-lg p-2.5">
                   <svg class="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-                  <p class="text-xs text-slate-600"><strong class="text-slate-700">Recommendation:</strong> ${i.recommendation}</p>
+                  <p class="text-xs text-slate-600"><strong class="text-slate-700">Recommendation:</strong> ${escHtml(i.recommendation)}</p>
                 </div>
-                ${i.actions ? `<div class="mt-3 flex flex-wrap gap-2">${i.actions.map(a => `<button onclick="AdminApp.mock_action('${a.action}', '', '${a.detail || ''}', this)" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition-colors shadow-sm"><span>${a.icon}</span> ${a.label}</button>`).join('')}</div>` : ''}
+                ${i.actions ? `<div class="mt-3 flex flex-wrap gap-2">${i.actions.map(a => `<button onclick="AdminApp.mock_action('${a.action}', '', '${escAttr(a.detail || '')}', this)" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition-colors shadow-sm"><span>${a.icon}</span> ${a.label}</button>`).join('')}</div>` : ''}
               </div>
             </div>
           </div>
@@ -984,6 +1029,7 @@ function mock_action(action, id, detail, btnEl) {
 let _refresh_timer = null;
 
 function start_auto_refresh() {
+  if (_refresh_timer) clearInterval(_refresh_timer);
   _refresh_timer = setInterval(() => {
     if (_current_section === 'dashboard') {
       load_dashboard();
@@ -1087,8 +1133,19 @@ document.addEventListener('DOMContentLoaded', () => {
   init_mobile_menu();
   init_modals();
   init_order_tabs();
-  navigate('dashboard');
-  start_auto_refresh();
+
+  // Token gate wiring
+  el('token-submit-btn')?.addEventListener('click', submit_token);
+  el('token-input')?.addEventListener('keydown', e => { if (e.key === 'Enter') submit_token(); });
+  el('signout-btn-desktop')?.addEventListener('click', sign_out);
+  el('signout-btn-mobile')?.addEventListener('click', sign_out);
+
+  if (get_token()) {
+    navigate('dashboard');
+    start_auto_refresh();
+  } else {
+    show_token_form();
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -1102,4 +1159,5 @@ window.AdminApp = {
   quick_resolve,
   send_apology,
   mock_action,
+  sign_out,
 };

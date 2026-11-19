@@ -12,7 +12,7 @@ Usage:
         --resolution "Refund processed, replacement shipped next day" \
         --tags '["wrong_item","refund","resolved"]'
 
-Required env vars: STORE_API_URL (and optionally STORE_API_KEY)
+Required env vars: STORE_API_URL, plus STORE_API_TOKEN or STORE_API_TOKEN_SECRET_ARN (with AWS_REGION)
 """
 
 import argparse

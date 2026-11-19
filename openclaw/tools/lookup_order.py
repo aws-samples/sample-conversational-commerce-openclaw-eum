@@ -9,7 +9,7 @@ Output (stdout, JSON):
     {"id", "status", "items": [...], "customer": {...}, "total", "shipped_date", "tracking"}
     On error: {"error": "<message>"}
 
-Required env vars: STORE_API_URL (and optionally STORE_API_KEY)
+Required env vars: STORE_API_URL, plus STORE_API_TOKEN or STORE_API_TOKEN_SECRET_ARN (with AWS_REGION)
 """
 
 import argparse

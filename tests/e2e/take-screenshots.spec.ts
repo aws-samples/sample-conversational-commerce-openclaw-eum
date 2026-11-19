@@ -1,10 +1,23 @@
-import { test } from "@playwright/test";
+import { test, Page } from "@playwright/test";
 import * as path from "path";
 
 const STORE_URL = "https://d1yis8p165yfn1.cloudfront.net";
 const ADMIN_URL = `${STORE_URL}/admin.html`;
 const DOCS_DIR = "../../docs";
 const MOCKUPS_PATH = `file://${path.resolve(__dirname, "../../docs/mockups.html")}`;
+
+/**
+ * Seed the admin token into sessionStorage before the page loads.
+ * Set the ADMIN_TOKEN env var when running screenshot tests against a live deploy.
+ */
+async function seedAdminToken(page: Page) {
+  const token = process.env.ADMIN_TOKEN;
+  if (token) {
+    await page.addInitScript((tok: string) => {
+      sessionStorage.setItem('clawAdminToken', tok);
+    }, token);
+  }
+}
 
 test("take storefront screenshot", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -16,6 +29,7 @@ test("take storefront screenshot", async ({ page }) => {
 
 test("take admin dashboard screenshot", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
+  await seedAdminToken(page);
   await page.goto(ADMIN_URL);
   await page.waitForTimeout(4000);
   await page.screenshot({ path: `${DOCS_DIR}/screenshot-admin-dashboard.png` });
@@ -23,6 +37,7 @@ test("take admin dashboard screenshot", async ({ page }) => {
 
 test("take admin orders screenshot", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
+  await seedAdminToken(page);
   await page.goto(ADMIN_URL);
   await page.waitForTimeout(4000);
   await page.locator("#nav-desktop-sidebar-nav-orders").click();
@@ -32,6 +47,7 @@ test("take admin orders screenshot", async ({ page }) => {
 
 test("take admin escalations screenshot", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
+  await seedAdminToken(page);
   await page.goto(ADMIN_URL);
   await page.waitForTimeout(4000);
   await page.locator("#nav-desktop-sidebar-nav-escalations").click();
@@ -63,6 +79,7 @@ test("take storefront checkout screenshot", async ({ page }) => {
 
 test("take admin products screenshot", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
+  await seedAdminToken(page);
   await page.goto(ADMIN_URL);
   await page.waitForTimeout(4000);
   await page.locator("#nav-desktop-sidebar-nav-products").click();
@@ -72,6 +89,7 @@ test("take admin products screenshot", async ({ page }) => {
 
 test("take admin insights screenshot", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
+  await seedAdminToken(page);
   await page.goto(ADMIN_URL);
   await page.waitForTimeout(4000);
   await page.locator("#nav-desktop-sidebar-nav-insights").click();

@@ -5,17 +5,20 @@ When running on Lambda, reads DB credentials from Secrets Manager via
 DB_SECRET_ARN. Falls back to individual DB_* env vars for local dev.
 """
 
+import hmac
 import html
 import json
 import logging
 import os
+import re
+import time
 from contextlib import contextmanager
 from datetime import datetime
 
 import boto3
 import pymysql
 import pymysql.cursors
-from flask import Flask, jsonify, request
+from flask import Flask, g, jsonify, request
 from flask_cors import CORS
 
 # ---------------------------------------------------------------------------
@@ -30,7 +33,140 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 app = Flask(__name__)
-CORS(app, origins="*")
+_SHOP_URL = os.environ.get("SHOP_URL", "")
+CORS(app, origins=[_SHOP_URL] if _SHOP_URL else [])
+if not _SHOP_URL:
+    logger.warning("SHOP_URL is not set; CORS will block all cross-origin requests")
+
+# ---------------------------------------------------------------------------
+# Auth helpers
+# ---------------------------------------------------------------------------
+
+# Public routes that do not require a bearer token.
+# Format: (HTTP_METHOD, flask_rule_string)
+_PUBLIC_ROUTES: frozenset[tuple[str, str]] = frozenset({
+    ("GET",  "/api/health"),
+    ("GET",  "/api/products"),
+    ("GET",  "/api/products/<int:product_id>"),
+    ("POST", "/api/orders"),
+    ("POST", "/api/carts/save"),
+})
+
+# Per-container cache for the API token. _token_configured is None until the
+# first successful lookup; True if a token was found, False if neither env var
+# nor secret ARN is set. A Secrets Manager error is not cached.
+_cached_api_token: str | None = None
+_token_configured: bool | None = None
+
+
+def _get_api_token() -> str | None:
+    """Return the configured store API token, or None if not configured.
+
+    Checks STORE_API_TOKEN (local dev) first, then fetches once from
+    Secrets Manager via STORE_API_TOKEN_SECRET_ARN and caches the result.
+    """
+    global _cached_api_token, _token_configured
+    if _token_configured is not None:
+        return _cached_api_token
+
+    raw = os.environ.get("STORE_API_TOKEN", "")
+    if raw:
+        _cached_api_token = raw
+        _token_configured = True
+        return _cached_api_token
+
+    secret_arn = os.environ.get("STORE_API_TOKEN_SECRET_ARN", "")
+    if secret_arn:
+        try:
+            sm = boto3.client("secretsmanager")
+            resp = sm.get_secret_value(SecretId=secret_arn)
+            _cached_api_token = resp["SecretString"]
+            _token_configured = True
+            return _cached_api_token
+        except Exception:
+            # Not cached, so the next request retries. Protected routes return 503 meanwhile.
+            logger.exception("Failed to load store API token from Secrets Manager")
+            return None
+
+    _token_configured = False
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Per-address notification rate limiter for POST /api/orders
+# ---------------------------------------------------------------------------
+# Maps email/phone -> list of send timestamps within the window. Applies only to
+# anonymous (storefront) orders. Lambda is stateless, so this is per-container;
+# it still limits burst abuse from a single container instance.
+_NOTIF_WINDOW_S = 600  # 10-minute window
+_NOTIF_MAX = 5         # max notifications per address per window per container
+_notif_timestamps: dict[str, list[float]] = {}
+
+
+def _notification_allowed(address: str) -> bool:
+    """Return True if a notification to this address may be sent."""
+    if getattr(g, "authenticated", False):
+        return True
+    # Normalise so case variants of the same email share one counter.
+    key = address.strip().lower()
+    now = time.monotonic()
+    cutoff = now - _NOTIF_WINDOW_S
+    recent = [t for t in _notif_timestamps.get(key, []) if t > cutoff]
+    if len(recent) >= _NOTIF_MAX:
+        return False
+    recent.append(now)
+    _notif_timestamps[key] = recent
+    return True
+
+
+@app.before_request
+def _check_auth():
+    """Enforce bearer-token auth on all non-public routes."""
+    if request.method == "OPTIONS":
+        return
+
+    rule = request.url_rule
+    if rule is None:
+        # No matching route: let Flask return its 404, 405 or redirect. No view runs.
+        return
+
+    # Flask serves HEAD from the GET view, so treat it as GET for the public check.
+    method = "GET" if request.method == "HEAD" else request.method
+    is_public = (method, rule.rule) in _PUBLIC_ROUTES
+
+    # Extract token from Authorization header (never from any other source).
+    auth_header = request.headers.get("Authorization", "")
+    presented_token: str | None = None
+    if auth_header.startswith("Bearer "):
+        presented_token = auth_header[7:]
+
+    configured_token = _get_api_token()
+
+    if presented_token is not None:
+        # Compare bytes: compare_digest raises TypeError on non-ASCII str input.
+        if configured_token is not None and hmac.compare_digest(
+            presented_token.encode("utf-8"), configured_token.encode("utf-8")
+        ):
+            g.authenticated = True
+        else:
+            # Wrong or unverifiable token: reject before serving any data.
+            resp = jsonify({"error": "Unauthorized"})
+            resp.headers["WWW-Authenticate"] = "Bearer"
+            return resp, 401
+    else:
+        g.authenticated = False
+
+    if is_public:
+        return  # public route, no token required
+
+    # Protected route.
+    if configured_token is None:
+        return jsonify({"error": "Store API authentication is not configured."}), 503
+
+    if not g.authenticated:
+        resp = jsonify({"error": "Unauthorized"})
+        resp.headers["WWW-Authenticate"] = "Bearer"
+        return resp, 401
 
 # ---------------------------------------------------------------------------
 # Database helpers
@@ -597,6 +733,15 @@ def create_order():
 
     if not customer_name:
         return _err("customer_name is required.")
+    if len(customer_name) > 100:
+        return _err("customer_name must be 100 characters or fewer.")
+    if customer_email:
+        if len(customer_email) > 254 or not re.match(r'^[^@]+@[^@]+\.[^@]+$', customer_email):
+            return _err("customer_email is not a valid email address.")
+    if customer_phone:
+        # Same rule as the storefront (web/static/js/store.js): + then 7 to 15 digits.
+        if not re.match(r'^\+[1-9][0-9]{6,14}$', customer_phone):
+            return _err("customer_phone must be E.164 format (+ followed by 7 to 15 digits).")
     if not items or not isinstance(items, list) or len(items) == 0:
         return _err("items must be a non-empty list.")
 
@@ -620,10 +765,15 @@ def create_order():
 
                 if existing:
                     customer_id = existing["id"]
-                    cur.execute(
-                        "UPDATE customers SET name = %s, email = COALESCE(%s, email) WHERE id = %s",
-                        (customer_name, customer_email, customer_id),
-                    )
+                    # Authenticated callers (agents) may update the customer record.
+                    # Anonymous callers cannot prove they own this phone number, so
+                    # they must not change its name or email (that would redirect
+                    # shipping and refund emails for the customer's other orders).
+                    if getattr(g, "authenticated", False):
+                        cur.execute(
+                            "UPDATE customers SET name = %s, email = COALESCE(%s, email) WHERE id = %s",
+                            (customer_name, customer_email, customer_id),
+                        )
                 else:
                     cur.execute(
                         "INSERT INTO customers (name, email, phone, created_at) VALUES (%s, %s, %s, %s)",
@@ -718,7 +868,7 @@ def create_order():
         logger.exception("Demo stock reset failed (non-fatal)")
 
     try:
-        if customer_email:
+        if customer_email and _notification_allowed(customer_email):
             items_summary = ", ".join(
                 f"{product_rows[pid]['name']} x{qty}"
                 for pid, qty in qty_map.items()
@@ -731,11 +881,13 @@ def create_order():
                 items_summary=items_summary,
                 total=total,
             )
+        elif customer_email:
+            logger.warning("Order %s confirmation email suppressed by rate limiter", order_id)
     except Exception:
         logger.exception("Order confirmation email failed (non-fatal)")
 
     try:
-        if customer_phone:
+        if customer_phone and _notification_allowed(customer_phone):
             items_list = ", ".join(
                 product_rows[pid]["name"]
                 for pid in list(qty_map.keys())[:3]
@@ -753,6 +905,8 @@ def create_order():
                 f"  4 = Good\n"
                 f"  5 = Excellent"
             )
+        elif customer_phone:
+            logger.warning("Order %s WhatsApp confirmation suppressed by rate limiter", order_id)
     except Exception:
         logger.exception("WhatsApp confirmation failed (non-fatal)")
 

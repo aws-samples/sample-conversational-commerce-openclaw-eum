@@ -12,8 +12,12 @@ Required environment variables:
     OPENCLAW_BRIDGE_TOKEN                        (auth token for agent-bridge)
 
 Optional environment variables:
-    STORE_API_KEY          API key for Store API authentication
+    STORE_API_TOKEN        Raw bearer token (local dev; takes priority over secret ARN)
     SELLER_NAME            Display name in alerts (default: "Store Owner")
+
+Required when STORE_API_TOKEN is not set:
+    STORE_API_TOKEN_SECRET_ARN  Secrets Manager ARN for the bearer token
+    AWS_REGION                  AWS region for Secrets Manager
 
 Input  (CLI args):
     --reason          <str>   Brief reason for escalation e.g. "payment dispute"  (required)
